@@ -50,7 +50,7 @@ scouting_dataset$X.Coordinate <- as.character(scouting_dataset$X.Coordinate)
 scouting_dataset$Y.Coordinate <- as.character(scouting_dataset$Y.Coordinate)
 
 model_events <- scouting_dataset %>%
-  subset({{Detail.1 == "Indirect" | Detail.1 == "Direct"} | {Event == "Shot" | Event == "Goal" | Event == "Takeaway"} })
+  subset({{Detail.1 == "Indirect" | Detail.1 == "Direct"} | {Event == "Shot" | Event == "Goal" | Event == "Takeaway"}})
 #this pulls all the data from the scouting dataset and then subsets it to all our events we use for the xT model
 
 
@@ -333,27 +333,32 @@ iter_1_viz
 #plus xT from all the zones passed to/carried to * probability of moving to each zone
 #minus the xT of that location flipped across the rink.
 xTT <- xTT %>%
-  add_column(xTT2 = xTT1)
+  add_column(xTT2 = )
 
 xTT <- xTT %>%
-  add_column(Positive.Events = 0,
+  add_column(xTT2 = 0,
+             Positive.Events = 0,
              Positive.Move.Probability = 0,
              Negative.Events = 0,
-             Negative.Move.Probability = 0)
+             Negative.Event.Probability = 0)
 #For calculating more xTT. Positive moves are successful carries or passes.
 #Negative moves are incomplete passes or giveaways
 xTT$xTT2 <- xTT$xTT1
 
-for (bin in xTT$Bin) {
-  xTT[bin, "Positive.Events"] = length(which({model_events$Bin == bin & 
-      model_events$Event %in% c("Carry", "Pass")}))
-  #xTT[bin, "Positive.Move.Probability"] = (xTT[bin, "Positive.Events"] / xTT[bin, as.numeric(as.character("Freq"))])
-  xTT[bin, "Negative.Events"] = length(which({model_events$Bin == bin & 
-      model_events$Event %in% c("Takeaway", "Incomplete Pass")}))
-  #xTT[bin, "Negative.Move.Probability"] = (xTT[bin, "Negative.Events"] / xTT[bin, as.numeric(as.character("Freq"))])
+for (row in 1:nrow(xTT)) {
+  pos_df <- model_events %>%
+    subset({{Bin == xTT[[row, "Bin"]]} & {Event %in% c("Carry", "Play")}})
+  neg_df <- model_events %>%
+    subset({{Bin == xTT[[row, "Bin"]]} & {Event %in% c("Incomplete Play", "Takeaway")}})
+  xTT[row, "Positive.Events"] = nrow(pos_df)
+  xTT[row, "Negative.Events"] = nrow(neg_df)
 }
+#Just calculating the number of positive and negative events that happen in each bin
+xTT$Positive.Move.Probability = (xTT$Positive.Events / as.numeric(as.character(xTT$Freq)))
+#All positive events that happen are moves (passes and carries)
+xTT$Negative.Event.Probability = (xTT$Negative.Events / as.numeric(as.character(xTT$Freq)))
+#But a takeaway is an "event", so this is failed passes and takeaways.
 
-#This doesn't work, but when it does, should save a ton of time in the for loop.
 
 for (bin in 1:nrow(xTT)) {
   #for every possible bin
@@ -382,8 +387,6 @@ for (bin in 1:nrow(xTT)) {
       
         
       }
-      if ({model_events[event, ]$Event == "Takeaway"}) {
-        
       }
   }
 }
