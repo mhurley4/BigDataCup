@@ -332,8 +332,6 @@ iter_1_viz
 #Thus: we say xT of bin 2 is equal to xT generated from shooting there (zero)
 #plus xT from all the zones passed to/carried to * probability of moving to each zone
 #minus the xT of that location flipped across the rink.
-xTT <- xTT %>%
-  add_column(xTT2 = )
 
 xTT <- xTT %>%
   add_column(xTT2 = 0,
