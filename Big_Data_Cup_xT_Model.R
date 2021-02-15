@@ -335,6 +335,26 @@ iter_1_viz
 xTT <- xTT %>%
   add_column(xTT2 = xTT1)
 
+xTT <- xTT %>%
+  add_column(Positive.Events = 0,
+             Positive.Move.Probability = 0,
+             Negative.Events = 0,
+             Negative.Move.Probability = 0)
+#For calculating more xTT. Positive moves are successful carries or passes.
+#Negative moves are incomplete passes or giveaways
+xTT$xTT2 <- xTT$xTT1
+
+for (bin in xTT$Bin) {
+  xTT[bin, "Positive.Events"] = length(which({model_events$Bin == bin & 
+      model_events$Event %in% c("Carry", "Pass")}))
+  #xTT[bin, "Positive.Move.Probability"] = (xTT[bin, "Positive.Events"] / xTT[bin, as.numeric(as.character("Freq"))])
+  xTT[bin, "Negative.Events"] = length(which({model_events$Bin == bin & 
+      model_events$Event %in% c("Takeaway", "Incomplete Pass")}))
+  #xTT[bin, "Negative.Move.Probability"] = (xTT[bin, "Negative.Events"] / xTT[bin, as.numeric(as.character("Freq"))])
+}
+
+#This doesn't work, but when it does, should save a ton of time in the for loop.
+
 for (bin in 1:nrow(xTT)) {
   #for every possible bin
   for (event in 1:nrow(model_events)) {
