@@ -357,6 +357,26 @@ xTT$Positive.Move.Probability = (xTT$Positive.Events / as.numeric(as.character(x
 xTT$Negative.Event.Probability = (xTT$Negative.Events / as.numeric(as.character(xTT$Freq)))
 #But a takeaway is an "event", so this is failed passes and takeaways.
 
+for (bin in 1:552) { #eventually this will be 1:nrow(xTT), testing it for now
+  #Part 1: Calculating Positive Move Probabilities to Add
+  #this is the hard part
+  pos_df <- model_events %>%
+    subset({{Bin == xTT[[bin, "Bin"]]} & {Event %in% c("Carry", "Play")}})
+  if (nrow(pos_df) == 0) {
+    next()
+  }
+  pos_df_freq <- pos_df$Bin.2 %>%
+    table() %>%
+    as.data.frame()
+  pos_df_freq$xTT1 <- xTT[(xTT$Bin = bin), "xTT1"]
+  #error is here--gotta find the right way to slice the vector
+  pos_df_freq$Weighted.xTT1 <- (pos_df_freq$xTT1 *
+                                  (pos_df_freq$Freq / sum(pos_df_freq$Freq)))
+
+  #xTT$xTT2 <- xTT$xTT2 + (
+    #xTT$Positive.Move.Probability * sum() 
+  #)
+}
 
 for (bin in 1:nrow(xTT)) {
   #for every possible bin
@@ -387,4 +407,3 @@ for (bin in 1:nrow(xTT)) {
       }
       }
   }
-}
