@@ -357,7 +357,7 @@ xTT$Positive.Move.Probability = (xTT$Positive.Events / as.numeric(as.character(x
 xTT$Negative.Event.Probability = (xTT$Negative.Events / as.numeric(as.character(xTT$Freq)))
 #But a takeaway is an "event", so this is failed passes and takeaways.
 
-for (bin in 1:2) { #eventually this will be 1:nrow(xTT), testing it for now
+for (bin in 1:nrow(xTT)) { #eventually this will be 1:nrow(xTT), testing it for now
   #Part 1: Calculating Positive Move Probabilities to Add
   #this is the hard part
   pos_df <- model_events %>%
@@ -367,17 +367,24 @@ for (bin in 1:2) { #eventually this will be 1:nrow(xTT), testing it for now
   }
   pos_df_freq <- pos_df$Bin.2 %>%
     table() %>%
-    as.data.frame()
+    as.data.frame() %>%
+    drop_na()
   names(pos_df_freq)[names(pos_df_freq) == "."] <- "Bin"
+  pos_df_freq$Bin <- as.numeric(as.character(pos_df_freq$Bin))
   pos_df_freq <- pos_df_freq %>%
-    mutate(xTT1 = xTT[[which(match(xTT$Bin, pos_df_freq$Bin[bin]) == 1), "xTT1"]])
-  #error is here--gotta find the right way to slice the vector
+    mutate(xTT1 = 0)
+  #This fails at bin 244, for reasons unbeknownst to me. But it's better.
+  for (each_bin in 1:nrow(pos_df_freq)) {
+    pos_df_freq$xTT1[each_bin] <- xTT[[
+      which(match(xTT$Bin, pos_df_freq$Bin[each_bin]) == 1), 
+                             "xTT1"]]
+  }
+  #Everything below this line works. Everything above this loop works.
+  #It works for 235 rows. WHY NOT FOR 668???
   pos_df_freq$Weighted.xTT1 <- (pos_df_freq$xTT1 *
                                   (pos_df_freq$Freq / sum(pos_df_freq$Freq)))
-
-  #xTT$xTT2 <- xTT$xTT2 + (
-    #xTT$Positive.Move.Probability * sum() 
-  #)
+  xTT[bin, "xTT2"] <- xTT[bin, "xTT2"] + 
+    (xTT[bin, "Positive.Move.Probability"] * sum(pos_df_freq$Weighted.xTT1))
 }
 
 for (bin in 1:nrow(xTT)) {
