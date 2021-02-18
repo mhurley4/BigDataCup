@@ -1,6 +1,6 @@
 #Big Data Cup xTT Model
-#Avery Ellis, @aellis0
-#2/7/2021
+#Avery Ellis and Matt Hurley
+#2/16/2021
 
 #Quick Notes on xTT
 #From Soccer: Singh [2019]
@@ -14,7 +14,7 @@
 #So for given (i, j) on the rink:
 #xTT(i,j) = (p(Score at i,j) * p(Shoot from i,j))+ 
 #p(skate or pass from i, j) * sum over all other zones of (p(passing or skating to a zone) * xTT(that zone)) -
-#xTT(-i, -j)
+#p(lose the puck from i, j) * sum over all other zones of (p(failing a pass to a zone) * xTT(that zone))
 #A player's xTT is defined as the sum of all xT they create in individual actions (positive and negative)
 
 #Why Is This Useful?
@@ -357,7 +357,7 @@ xTT$Positive.Move.Probability = (xTT$Positive.Events / as.numeric(as.character(x
 xTT$Negative.Event.Probability = (xTT$Negative.Events / as.numeric(as.character(xTT$Freq)))
 #But a takeaway is an "event", so this is failed passes and takeaways.
 
-for (bin in 1:552) { #eventually this will be 1:nrow(xTT), testing it for now
+for (bin in 1:2) { #eventually this will be 1:nrow(xTT), testing it for now
   #Part 1: Calculating Positive Move Probabilities to Add
   #this is the hard part
   pos_df <- model_events %>%
@@ -368,7 +368,9 @@ for (bin in 1:552) { #eventually this will be 1:nrow(xTT), testing it for now
   pos_df_freq <- pos_df$Bin.2 %>%
     table() %>%
     as.data.frame()
-  pos_df_freq$xTT1 <- xTT[(xTT$Bin = bin), "xTT1"]
+  names(pos_df_freq)[names(pos_df_freq) == "."] <- "Bin"
+  pos_df_freq <- pos_df_freq %>%
+    mutate(xTT1 = xTT[[which(match(xTT$Bin, pos_df_freq$Bin[bin]) == 1), "xTT1"]])
   #error is here--gotta find the right way to slice the vector
   pos_df_freq$Weighted.xTT1 <- (pos_df_freq$xTT1 *
                                   (pos_df_freq$Freq / sum(pos_df_freq$Freq)))
