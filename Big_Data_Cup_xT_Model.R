@@ -418,8 +418,13 @@ for (bin in 1:nrow(xTT)) {
   #finally, add the new "weighted xTT1" to the xTT df, creating xTT2!
 }
 
+xtt_neg_impacts <- tibble(c(1:691)) %>%
+  rename(Bin = "c(1:691)") %>%
+  mutate(Neg.Impact = 0)
+
+
 #7B: Calculating the Negative Transition Matrix
-for (bin in 551:552) {
+for (bin in 1:nrow(xTT)) {
   #iterates through every bin
   neg_df <- model_events %>%
     subset({{Bin == xTT[[bin, "Bin"]]} & {Event %in% c("Failed Play", "Takeaway")}})
@@ -430,9 +435,11 @@ for (bin in 551:552) {
   }
   #if there aren't any, then skip this part of the loop
   neg_df_takeaways <- neg_df %>%
-    subset(Event == "Takeaway")
+    subset(Event == "Takeaway") %>%
+    as_tibble()
   neg_df_plays <- neg_df %>%
-    subset(Event == "Failed Play")
+    subset(Event == "Failed Play") %>%
+    as_tibble()
   #Part 7B1: Calculating the Negative Impact of Failed Passes
   if (nrow(neg_df_plays) > 0) {
     neg_df_freq <- neg_df_plays$Bin.2 %>%
@@ -463,29 +470,40 @@ for (bin in 551:552) {
     #adjusts it to the approximate coordinates,
     #and then makes the takeaways dataframe smaller,
     #because they only happen in this bin,
-    #so we only need the number that occur.
+    #so we only need the number that occur and the location they occur in
     neg_df_takeaways <- neg_df_takeaways %>%
-      select(X.Coordinate, Y.Coordinate, Bin) %>%
-      mutate(Flipped.X.Coordinate = (200 - X.Coordinate),
-             Flipped.Y.Coordinate = (85 - Y.Coordinate),
-             Flipped.Bin = 0) %>%
-      mutate(Approx.Flipped.X = Flipped.X.Coordinate %/% 5,
-             Approx.Flipped.Y = Flipped.Y.Coordinate %/% 5) %>%
-      select(X.Coordinate, Y.Coordinate, Bin, Approx.Flipped.X, Approx.Flipped.Y, Flipped.Bin)
-    #all the above works. Gotta fix this bottom loop, goal is to find the bin
-    #of the flipped location. Unclear why it doesn't run.
-    for (bin in 1:nrow(xTT)) {
-      ifelse(
-        ({neg_df_takeaways[[1, "Approx.Flipped.X"]] == xTT[[bin, "Approx.X.Location"]] &
-          neg_df_takeaways[[1, "Approx.Flipped.Y"]] == xTT[[bin, "Approx.Y.Location"]]}),
-        (neg_df_takeaways[1, "Flipped.Bin"] <- xTT[[bin, "Bin"]]), 
-        next() 
-        )
-    }
-    takeaways_xTT <- (xTT[[neg_df_takeaways[[1, "Flipped.Bin"]], "xTT1"]] /
+      select(X.Coordinate, Y.Coordinate, Rounded.X.Location, Rounded.Y.Location, Bin) %>%
+      mutate(Flipped.X.Coordinate = as.numeric((200 - as.numeric(X.Coordinate))),
+             Flipped.Y.Coordinate = as.numeric((85 - as.numeric(Y.Coordinate)))) %>%
+      #When you lose the puck, you effectively flip the rink.
+      #O-Zone loss becomes D-Zone, and vice versa.
+      mutate(Approx.Flipped.X = as.numeric(Flipped.X.Coordinate %/% 5),
+             Approx.Flipped.Y = as.numeric(Flipped.Y.Coordinate %/% 5))%>%
+      #These mutates() basically just recalculate the bin you'd be in
+      #if you were to take the puck away in a bin.
+      mutate(Flipped.Bin = ifelse(
+                 Approx.Flipped.X > 0 & Approx.Flipped.Y > 0, 
+                 ((17 * Approx.Flipped.X) + Approx.Flipped.Y),
+                 ifelse(
+                   Approx.Flipped.X > 0 & Approx.Flipped.Y == 0, 
+                   (Approx.Flipped.X + (17 * Approx.Flipped.Y)),
+                   ifelse(
+                     Approx.Flipped.X == 0 & Approx.Flipped.Y > 0, 
+                     Approx.Flipped.Y, 0
+                   ))))
+    #The code for this is basically the same way the bins were
+    #originally generated. Just small changes.
+    takeaways_xTT <- (xTT[[neg_df_takeaways$Flipped.Bin[1], "xTT1"]] /
                         nrow(neg_df_takeaways))
-    }
-  #xTT[bin, "xTT2"] <- xTT[bin, "xTT2"] + 
-    #(xTT[bin, "Negative.Event.Probability"] * (failed_passes_xTT + takeaways_xTT))
+    #calculate the total xTT that comes from takeaways in this bin
+    #weighted by the probability of losing the puck here.
+  }
+  xTT[bin, "xTT2"] <- xTT[bin, "xTT2"] -
+    (xTT[bin, "Negative.Event.Probability"] * (failed_passes_xTT + takeaways_xTT))
+  #finally, add the xTT that comes from takeaways in this bin
+  #and failed passes to all other bins, multiply it by
+  #the probability of a negative event occuring,
+  #and subtract that all from our xTT figure, completing the second iteration
+  #of our xTT
 }
   
