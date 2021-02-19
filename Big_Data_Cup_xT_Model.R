@@ -254,7 +254,7 @@ rand_bin_plotting$Y.Coordinate.2 = (rand_bin_plotting$Y.Coordinate.2 - 42.5)
 rand_bin_viz <-
   nhl_rink_plot()+ 
   theme_void()+ 
-  geom_segment(data = (rand_bin_plotting %>% filter(Event %in% c("Shot", "Goal"))), 
+  geom_segment(data = (rand_bin_plotting %>% filter(Event %nin% c("Shot", "Goal"))), 
                aes(x = X.Coordinate, xend = X.Coordinate.2, y = Y.Coordinate, yend = Y.Coordinate.2, color = Event))+
   geom_jitter(data = (rand_bin_plotting %>% filter(Event %in% c("Shot", "Goal"))), 
              aes(x = X.Coordinate, y = Y.Coordinate, color = Event))+
@@ -475,14 +475,16 @@ for (bin in 551:552) {
     #all the above works. Gotta fix this bottom loop, goal is to find the bin
     #of the flipped location. Unclear why it doesn't run.
     for (bin in 1:nrow(xTT)) {
-      if ({neg_df_takeaways[[1, "Approx.Flipped.X"]] == xTT[[bin, "Approx.X.Location"]] &
-          neg_df_takeaways[[1, "Approx.Flipped.Y"]] == xTT[[bin, "Approx.Y.Location"]]}) {
-        neg_df_takeaways[[1, "Flipped.Bin"]] <- xTT[[bin, "Bin"]]
-      }
+      ifelse(
+        ({neg_df_takeaways[[1, "Approx.Flipped.X"]] == xTT[[bin, "Approx.X.Location"]] &
+          neg_df_takeaways[[1, "Approx.Flipped.Y"]] == xTT[[bin, "Approx.Y.Location"]]}),
+        (neg_df_takeaways[1, "Flipped.Bin"] <- xTT[[bin, "Bin"]]), 
+        next() 
+        )
     }
     takeaways_xTT <- (xTT[[neg_df_takeaways[[1, "Flipped.Bin"]], "xTT1"]] /
                         nrow(neg_df_takeaways))
-  }
+    }
   #xTT[bin, "xTT2"] <- xTT[bin, "xTT2"] + 
     #(xTT[bin, "Negative.Event.Probability"] * (failed_passes_xTT + takeaways_xTT))
 }
