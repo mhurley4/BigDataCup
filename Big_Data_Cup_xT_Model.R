@@ -45,6 +45,9 @@ library(ggforce)
 
 full_scouting_dataset <- read.csv("https://raw.githubusercontent.com/bigdatacup/Big-Data-Cup-2021/main/hackathon_scouting.csv")
 scouting_dataset <- full_scouting_dataset %>%
+scouting_dataset <- read.csv("https://raw.githubusercontent.com/bigdatacup/Big-Data-Cup-2021/main/hackathon_scouting.csv")
+scouting_dataset <- scouting_dataset %>%
+scouting_dataset <- full_scouting_dataset %>%
   subset({{Home.Team.Skaters == 5} & {Away.Team.Skaters == 5}})
 scouting_dataset$X.Coordinate <- as.character(scouting_dataset$X.Coordinate)
 scouting_dataset$Y.Coordinate <- as.character(scouting_dataset$Y.Coordinate)
@@ -169,16 +172,15 @@ model_events %>%
 
 #PART 4: WHERE ARE EVENTS CONCENTRATED?
 #Finding total events per bin and then plotting to visualize where things happen
+bins_df <- tibble(Possible.Bins = c(1:691))
+bins_df$Freq = 0
 
-bins_df <- model_events$Bin %>%
-  table() %>%
-  as.data.frame() %>%
-  as_tibble()
-#takes the Bins column and turns it into a new dataframe with the amount of events per bin also there
+for (possible_bin in 1:nrow(bins_df)) {
+  bins_df[[possible_bin, "Freq"]] = length(which(model_events$Bin == possible_bin))
+}
 
 #Data Tidying b/c weird import
-names(bins_df)[names(bins_df) == "."] <- "Bin"
-bins_df$Bin <- as.numeric(as.character(bins_df$Bin))
+names(bins_df)[names(bins_df) == "Possible.Bins"] <- "Bin"
 #renames column to bin for easier understandability
 
 bins_df <- mutate(
@@ -355,67 +357,44 @@ for (row in 1:nrow(xTT)) {
   xTT[row, "Negative.Events"] = nrow(neg_df)
 }
 #Just calculating the number of positive and negative events that happen in each bin
-xTT$Positive.Move.Probability = (xTT$Positive.Events / as.numeric(as.character(xTT$Freq)))
+xTT <- xTT %>%
+  mutate(Positive.Move.Probability = 
+           ifelse((Positive.Events >= 1), (xTT$Positive.Events / as.numeric(as.character(xTT$Freq))), 0),
+         Negative.Event.Probability = 
+           ifelse((Negative.Events >= 1), (xTT$Negative.Events / as.numeric(as.character(xTT$Freq))), 0)
+  )
 #All positive events that happen are moves (passes and carries)
-xTT$Negative.Event.Probability = (xTT$Negative.Events / as.numeric(as.character(xTT$Freq)))
 #But a takeaway is an "event", so this is failed passes and takeaways.
 
-for (bin in 1:nrow(xTT)) { #eventually this will be 1:nrow(xTT), testing it for now
+for (bin in 1:nrow(xTT)) {
   #Part 1: Calculating Positive Move Probabilities to Add
-  #this is the hard part
   pos_df <- model_events %>%
     subset({{Bin == xTT[[bin, "Bin"]]} & {Event %in% c("Carry", "Play")}})
+  #takes the model_events df and subsets it into only events that occur in that bin
   if (nrow(pos_df) == 0) {
     next()
   }
+  #if there aren't any, then skip it
   pos_df_freq <- pos_df$Bin.2 %>%
     table() %>%
     as.data.frame() %>%
     drop_na()
+  #take the ENDING locations of these events and calculate the frequencies where these occur.
+  #This forms the Markov transition matrix
   names(pos_df_freq)[names(pos_df_freq) == "."] <- "Bin"
   pos_df_freq$Bin <- as.numeric(as.character(pos_df_freq$Bin))
+  #this just makes the df look nicer
   pos_df_freq <- pos_df_freq %>%
     mutate(xTT1 = 0)
-  #This fails at bin 244, for reasons unbeknownst to me. But it's better.
+  #add in a column to find that bin's initial xTT
   for (each_bin in 1:nrow(pos_df_freq)) {
-    pos_df_freq$xTT1[each_bin] <- xTT[[
-      which(match(xTT$Bin, pos_df_freq$Bin[each_bin]) == 1), 
-                             "xTT1"]]
+    pos_df_freq$xTT1[each_bin] <- xTT[[pos_df_freq$Bin[each_bin], "xTT1"]]
   }
-  #Everything below this line works. Everything above this loop works.
-  #It works for 235 rows. WHY NOT FOR 668???
+  #call that bin's xTT from the xTT dataframe
   pos_df_freq$Weighted.xTT1 <- (pos_df_freq$xTT1 *
                                   (pos_df_freq$Freq / sum(pos_df_freq$Freq)))
+  #then weight that bin's xTT by the number of times it gets moved to
   xTT[bin, "xTT2"] <- xTT[bin, "xTT2"] + 
     (xTT[bin, "Positive.Move.Probability"] * sum(pos_df_freq$Weighted.xTT1))
+  #finally, add the new "weighted xTT1" to the xTT df, creating xTT2!
 }
-
-for (bin in 1:nrow(xTT)) {
-  #for every possible bin
-  for (event in 1:nrow(model_events)) {
-    #for every event in model_events
-    if ({model_events[event, ]$Bin == bin}) {
-      #if the event's starting bin matches the bin being used as an iterator
-      ifelse(({model_events[event, ]$Event %in% c("Carry", "Play")}), 
-             #if the event is a positive event, and has a starting location and a finishing location
-             (xTT[bin, xTT2] <- (xTT[bin, xTT2] + 
-                                   #adding move probability
-                                   (length(which({model_events$Bin == bin & model+events$Event %in% c("Carry", "Pass")})) /
-                                      #these two lines calculate the probability of moving; 
-                                      #i.e. number of total moves from this bin / number of events occuring
-                                                  (length(which(model_events$Bin == bin)))) *
-                                   # that move probability is then multiplied times the value of the place moved to
-                xTT[(model_events$Bin.2), xT1])),
-             #then add the xTT of the finishing location
-             #now if the event is a negative event (i.e if the above if-else statement is false)
-             ifelse((is.na(model_events[event, ]$Bin.2)), 
-                    #if the event happens in only one)
-                    (xTT[bin, xTT2] <- (xTT[bin, xTT2] - xTT[(model_events$Bin), xT1])),
-                    (xTT[bin, xTT2] <- (xTT[bin, xTT2] - xTT[(model_events$Bin.2), xT1]))
-             )
-      )
-      
-        
-      }
-      }
-  }
