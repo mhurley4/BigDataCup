@@ -43,17 +43,19 @@ library(tidyverse)
 library(ggforce)
 '%nin%' <- Negate('%in%')
 
-scouting_dataset <- read.csv("https://raw.githubusercontent.com/bigdatacup/Big-Data-Cup-2021/main/hackathon_scouting.csv")
-scouting_dataset <- scouting_dataset %>%
+full_scouting_dataset <- read.csv("https://raw.githubusercontent.com/bigdatacup/Big-Data-Cup-2021/main/hackathon_scouting.csv")
+scouting_dataset <- full_scouting_dataset %>%
   subset({{Home.Team.Skaters == 5} & {Away.Team.Skaters == 5}})
 scouting_dataset$X.Coordinate <- as.character(scouting_dataset$X.Coordinate)
 scouting_dataset$Y.Coordinate <- as.character(scouting_dataset$Y.Coordinate)
 
 model_events <- scouting_dataset %>%
   subset({{Detail.1 == "Indirect" | Detail.1 == "Direct"} | {Event == "Shot" | Event == "Goal" | Event == "Takeaway"}})
+  # subset({Event == "Play" | Event == "Incomplete Play" | Event == "Shot" | Event == "Goal" | Event == "Takeaway"})
 #this pulls all the data from the scouting dataset and then subsets it to all our events we use for the xT model
 
-
+#Below times how long it takes to make the carries
+start_time <- Sys.time()
 #Creating "Carries" --i.e. moving with the puck, based on the event data given
 for (row in 1:nrow(scouting_dataset)) {
   if ({scouting_dataset[row, ]$Event %in% c("Puck Recovery", "Takeaway")} & 
@@ -70,7 +72,8 @@ for (row in 1:nrow(scouting_dataset)) {
       )
   }
 }
-
+end_time <- Sys.time()
+print(end_time-start_time)
 
 #these loops do the same thing--checking to see where consecutive events happen and then creating a "carry" event
 #based on the location difference
