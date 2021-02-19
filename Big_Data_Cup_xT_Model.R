@@ -45,15 +45,12 @@ library(ggforce)
 
 full_scouting_dataset <- read.csv("https://raw.githubusercontent.com/bigdatacup/Big-Data-Cup-2021/main/hackathon_scouting.csv")
 scouting_dataset <- full_scouting_dataset %>%
-scouting_dataset <- read.csv("https://raw.githubusercontent.com/bigdatacup/Big-Data-Cup-2021/main/hackathon_scouting.csv")
-scouting_dataset <- scouting_dataset %>%
-scouting_dataset <- full_scouting_dataset %>%
   subset({{Home.Team.Skaters == 5} & {Away.Team.Skaters == 5}})
 scouting_dataset$X.Coordinate <- as.character(scouting_dataset$X.Coordinate)
 scouting_dataset$Y.Coordinate <- as.character(scouting_dataset$Y.Coordinate)
 
 model_events <- scouting_dataset %>%
-  subset({{Detail.1 == "Indirect" | Detail.1 == "Direct"} | {Event == "Shot" | Event == "Goal" | Event == "Takeaway"}})
+  subset({Event == "Shot" | Event == "Play" | Event == "Goal" | Event == "Takeaway"})
   # subset({Event == "Play" | Event == "Incomplete Play" | Event == "Shot" | Event == "Goal" | Event == "Takeaway"})
 #this pulls all the data from the scouting dataset and then subsets it to all our events we use for the xT model
 
@@ -96,6 +93,26 @@ for (row in (1:nrow(scouting_dataset))) {
         "", "", "", "", "", scouting_dataset[(row + 1), ]$X.Coordinate, scouting_dataset[(row + 1), ]$Y.Coordinate)
         )
     }
+}
+
+#One more thing we gotta make based on data inferences: failed passes.
+#Makes calculating the negative Markov transition matrix a lot easier.
+
+for (row in (1:nrow(scouting_dataset))) {
+  if ({scouting_dataset[row, ]$Event == "Incomplete Play"} &
+      {scouting_dataset[(row + 1), ]$Event == "Puck Recovery"} &
+      {scouting_dataset[row, ]$Team != scouting_dataset[(row + 1), ]$Team}) {
+    model_events <- model_events %>%
+      rbind(c(scouting_dataset[row, ]$game_date, scouting_dataset[row, ]$Home.Team, scouting_dataset[row, ]$Away.Team,
+              scouting_dataset[row, ]$Period, scouting_dataset[row, ]$Clock,
+              scouting_dataset[row, ]$Home.Team.Skaters, scouting_dataset[row, ]$Away.Team.Skaters, 
+              scouting_dataset[row, ]$Home.Team.Goals, scouting_dataset[row, ]$Away.Team.Goals, scouting_dataset[row, ]$Team,
+              scouting_dataset[row, ]$Player, "Failed Play", 
+              scouting_dataset[row, ]$X.Coordinate, scouting_dataset[row, ]$Y.Coordinate, "", "", "", "", 
+              scouting_dataset[(row + 1), ]$Player, 
+              scouting_dataset[(row + 1), ]$X.Coordinate, scouting_dataset[(row + 1), ]$Y.Coordinate)
+      )
+  }
 }
 
 model_events$X.Coordinate <- as.numeric(model_events$X.Coordinate)
@@ -237,7 +254,7 @@ rand_bin_plotting$Y.Coordinate.2 = (rand_bin_plotting$Y.Coordinate.2 - 42.5)
 rand_bin_viz <-
   nhl_rink_plot()+ 
   theme_void()+ 
-  geom_segment(data = (rand_bin_plotting %>% filter(Event %nin% c("Shot", "Goal"))), 
+  geom_segment(data = (rand_bin_plotting %>% filter(Event %in% c("Shot", "Goal"))), 
                aes(x = X.Coordinate, xend = X.Coordinate.2, y = Y.Coordinate, yend = Y.Coordinate.2, color = Event))+
   geom_jitter(data = (rand_bin_plotting %>% filter(Event %in% c("Shot", "Goal"))), 
              aes(x = X.Coordinate, y = Y.Coordinate, color = Event))+
@@ -366,11 +383,13 @@ xTT <- xTT %>%
 #All positive events that happen are moves (passes and carries)
 #But a takeaway is an "event", so this is failed passes and takeaways.
 
+#7A: Calculating The Positive Transition Matrix 
 for (bin in 1:nrow(xTT)) {
-  #Part 1: Calculating Positive Move Probabilities to Add
+  #iterates through every bin
   pos_df <- model_events %>%
     subset({{Bin == xTT[[bin, "Bin"]]} & {Event %in% c("Carry", "Play")}})
-  #takes the model_events df and subsets it into only events that occur in that bin
+  #takes the model_events df and subsets it into only positive events 
+  #that start in that bin
   if (nrow(pos_df) == 0) {
     next()
   }
@@ -380,17 +399,17 @@ for (bin in 1:nrow(xTT)) {
     as.data.frame() %>%
     drop_na()
   #take the ENDING locations of these events and calculate the frequencies where these occur.
-  #This forms the Markov transition matrix
+  #This forms the Markov transition matrix.
   names(pos_df_freq)[names(pos_df_freq) == "."] <- "Bin"
   pos_df_freq$Bin <- as.numeric(as.character(pos_df_freq$Bin))
   #this just makes the df look nicer
   pos_df_freq <- pos_df_freq %>%
     mutate(xTT1 = 0)
-  #add in a column to find that bin's initial xTT
+  #add in a column to describe that bin's initial xTT
   for (each_bin in 1:nrow(pos_df_freq)) {
     pos_df_freq$xTT1[each_bin] <- xTT[[pos_df_freq$Bin[each_bin], "xTT1"]]
   }
-  #call that bin's xTT from the xTT dataframe
+  #call each bin's xTT from the xTT dataframe
   pos_df_freq$Weighted.xTT1 <- (pos_df_freq$xTT1 *
                                   (pos_df_freq$Freq / sum(pos_df_freq$Freq)))
   #then weight that bin's xTT by the number of times it gets moved to
@@ -398,3 +417,73 @@ for (bin in 1:nrow(xTT)) {
     (xTT[bin, "Positive.Move.Probability"] * sum(pos_df_freq$Weighted.xTT1))
   #finally, add the new "weighted xTT1" to the xTT df, creating xTT2!
 }
+
+#7B: Calculating the Negative Transition Matrix
+for (bin in 551:552) {
+  #iterates through every bin
+  neg_df <- model_events %>%
+    subset({{Bin == xTT[[bin, "Bin"]]} & {Event %in% c("Failed Play", "Takeaway")}})
+  #takes the model_events df and subsets it into only negative events that 
+  #either occur or start in that bin
+  if (nrow(neg_df) == 0) {
+    next()
+  }
+  #if there aren't any, then skip this part of the loop
+  neg_df_takeaways <- neg_df %>%
+    subset(Event == "Takeaway")
+  neg_df_plays <- neg_df %>%
+    subset(Event == "Failed Play")
+  #Part 7B1: Calculating the Negative Impact of Failed Passes
+  if (nrow(neg_df_plays) > 0) {
+    neg_df_freq <- neg_df_plays$Bin.2 %>%
+      table() %>%
+      as.data.frame() %>%
+      drop_na()
+    #take the ENDING locations of these events and calculate the frequencies where these occur.
+    #This forms the Markov transition matrix.
+    names(neg_df_freq)[names(neg_df_freq) == "."] <- "Bin"
+    neg_df_freq$Bin <- as.numeric(as.character(neg_df_freq$Bin))
+    #this just makes the df look nicer
+    neg_df_freq <- neg_df_freq %>%
+      mutate(xTT1 = 0)
+    #add in a column to describe that bin's initial xTT
+    for (each_bin in 1:nrow(neg_df_freq)) {
+      neg_df_freq$xTT1[each_bin] <- xTT[[neg_df_freq$Bin[each_bin], "xTT1"]]
+    }
+  #call each bin's xTT from the xTT dataframe
+  neg_df_freq$Weighted.xTT1 <- (neg_df_freq$xTT1 *
+                                  (neg_df_freq$Freq / sum(neg_df_freq$Freq)))
+  #then weight that bin's xTT by the number of times it gets moved to
+  failed_passes_xTT <- sum(neg_df_freq$Weighted.xTT1)
+  #finally, calculate and store the total xTT from failed passes.
+  }
+  #Part 7B2: Calculating the Negative Impact of Takeaways
+  if (nrow(neg_df_takeaways > 0)) {
+    #basically all this block does is find the flipped x-location, 
+    #adjusts it to the approximate coordinates,
+    #and then makes the takeaways dataframe smaller,
+    #because they only happen in this bin,
+    #so we only need the number that occur.
+    neg_df_takeaways <- neg_df_takeaways %>%
+      select(X.Coordinate, Y.Coordinate, Bin) %>%
+      mutate(Flipped.X.Coordinate = (200 - X.Coordinate),
+             Flipped.Y.Coordinate = (85 - Y.Coordinate),
+             Flipped.Bin = 0) %>%
+      mutate(Approx.Flipped.X = Flipped.X.Coordinate %/% 5,
+             Approx.Flipped.Y = Flipped.Y.Coordinate %/% 5) %>%
+      select(X.Coordinate, Y.Coordinate, Bin, Approx.Flipped.X, Approx.Flipped.Y, Flipped.Bin)
+    #all the above works. Gotta fix this bottom loop, goal is to find the bin
+    #of the flipped location. Unclear why it doesn't run.
+    for (bin in 1:nrow(xTT)) {
+      if ({neg_df_takeaways[[1, "Approx.Flipped.X"]] == xTT[[bin, "Approx.X.Location"]] &
+          neg_df_takeaways[[1, "Approx.Flipped.Y"]] == xTT[[bin, "Approx.Y.Location"]]}) {
+        neg_df_takeaways[[1, "Flipped.Bin"]] <- xTT[[bin, "Bin"]]
+      }
+    }
+    takeaways_xTT <- (xTT[[neg_df_takeaways[[1, "Flipped.Bin"]], "xTT1"]] /
+                        nrow(neg_df_takeaways))
+  }
+  #xTT[bin, "xTT2"] <- xTT[bin, "xTT2"] + 
+    #(xTT[bin, "Negative.Event.Probability"] * (failed_passes_xTT + takeaways_xTT))
+}
+  
