@@ -383,7 +383,7 @@ xTT <- xTT %>%
 #All positive events that happen are moves (passes and carries)
 #But a takeaway is an "event", so this is failed passes and takeaways.
 
-#7A: Calculating The Positive Transition Matrix 
+#PART 7A: Calculating The Positive Transition Matrix 
 for (bin in 1:nrow(xTT)) {
   #iterates through every bin
   pos_df <- model_events %>%
@@ -418,12 +418,8 @@ for (bin in 1:nrow(xTT)) {
   #finally, add the new "weighted xTT1" to the xTT df, creating xTT2!
 }
 
-xtt_neg_impacts <- tibble(c(1:691)) %>%
-  rename(Bin = "c(1:691)") %>%
-  mutate(Neg.Impact = 0)
 
-
-#7B: Calculating the Negative Transition Matrix
+#PART 7B: Calculating the Negative Transition Matrix
 for (bin in 1:nrow(xTT)) {
   #iterates through every bin
   neg_df <- model_events %>%
@@ -504,6 +500,32 @@ for (bin in 1:nrow(xTT)) {
   #and failed passes to all other bins, multiply it by
   #the probability of a negative event occuring,
   #and subtract that all from our xTT figure, completing the second iteration
-  #of our xTT
+  #of our xTT!
 }
+
+#PART 7C: Checking our Results from the Second Iteration
+xTT_plotting <- xTT
+xTT_plotting$xTT_plotting <- scale(xTT_plotting$xTT2)
+xTT_plotting$Approx.X.Location = 0.95 * (xTT_plotting$Approx.X.Location - 97.5)
+xTT_plotting$Approx.Y.Location = (xTT_plotting$Approx.Y.Location - 41)
+
+iter_2_viz <-
+  nhl_rink_plot()+ 
+  theme_void()+
+  geom_point(data = (xTT_plotting %>% filter(xTT2 > 0)), 
+             aes(x = Approx.X.Location, y = Approx.Y.Location, size = xTT2),
+             color = "#032cfc", alpha = 0.5)+
+  geom_point(data = (xTT_plotting %>% filter(xTT2 == 0)), 
+             aes(x = Approx.X.Location, y = Approx.Y.Location, size = xTT2),
+             color = "#1c6e15", alpha = 0.5)+
+  geom_point(data = (xTT_plotting %>% filter(xTT2 < 0)),
+             aes(x = Approx.X.Location, y = Approx.Y.Location, size = xTT2),
+             color = "#f00a0a", alpha = 0.5)+
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5), 
+        plot.caption = element_text(hjust = 0.5, face = "italic"),
+        plot.subtitle = element_text(hjust = 0.5))+
+  labs(x = "", y = "", title = "Second Iteration of xTT Model", 
+       subtitle = "Located in Closest 5x5 Region, Scaled by xTT",
+       caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
+iter_2_viz
   
