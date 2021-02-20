@@ -660,8 +660,8 @@ for (iteration in 3:5) {
 
 xTT_plotting <- xTT
 xTT_plotting$xTT_plotting <- scale(xTT_plotting$xTT5)
-xTT_plotting$Approx.X.Location = 0.95 * (xTT_plotting$Approx.X.Location - 100)
-xTT_plotting$Approx.Y.Location = (xTT_plotting$Approx.Y.Location - 41)
+xTT_plotting$Approx.X.Location = 0.96 * (xTT_plotting$Approx.X.Location - 99)
+xTT_plotting$Approx.Y.Location = (xTT_plotting$Approx.Y.Location - 40)
 
 more_iter_viz <-
   nhl_rink_plot()+ 
@@ -670,7 +670,7 @@ more_iter_viz <-
              aes(x = Approx.X.Location, y = Approx.Y.Location, size = xTT5),
              color = "#032cfc", alpha = 0.5)+
   geom_point(data = (xTT_plotting %>% filter({xTT5 == 0 & 
-      Bin %nin% c(0, 1, 15, 16, 17, 18, 33, 34, 646, 663, 679, 680, 681, 695, 696)})), 
+      Bin %nin% c(0, 1, 15, 16, 17, 18, 19, 33, 34, 50, 646, 662, 663, 664, 678, 679, 680, 681, 682, 694, 695, 696)})), 
              aes(x = Approx.X.Location, y = Approx.Y.Location),
              color = "#510a8c", alpha = 0.5)+
   geom_point(data = (xTT_plotting %>% filter(xTT5 < 0)),
@@ -679,7 +679,7 @@ more_iter_viz <-
   theme(legend.position = "none", plot.title = element_text(hjust = 0.5), 
         plot.caption = element_text(hjust = 0.5, face = "italic"),
         plot.subtitle = element_text(hjust = 0.5))+
-  labs(x = "", y = "", title = "Final xTT Model", 
+  labs(x = "", y = "", title = "Final OHL xTT Model", 
        subtitle = "Located in Closest 5x5 Region, Scaled by xTT",
        caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
 more_iter_viz
