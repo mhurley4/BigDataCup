@@ -531,7 +531,7 @@ iter_2_viz <-
              color = "#032cfc", alpha = 0.5)+
   geom_point(data = (xTT_plotting %>% filter(xTT2 == 0)), 
              aes(x = Approx.X.Location, y = Approx.Y.Location, size = xTT2),
-             color = "#1c6e15", alpha = 0.5)+
+             color = "#510a8c", alpha = 0.5)+
   geom_point(data = (xTT_plotting %>% filter(xTT2 < 0)),
              aes(x = Approx.X.Location, y = Approx.Y.Location, size = xTT2),
              color = "#f00a0a", alpha = 0.5)+
@@ -542,4 +542,126 @@ iter_2_viz <-
        subtitle = "Located in Closest 5x5 Region, Scaled by xTT",
        caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
 iter_2_viz
+#Yep, that checks out--positives are concentrated towards the slot, 
+#and negatives the same across the rink
+
+
+
+
+#PART 8: MORE ITERATIONS
+#Singh used 5 iterations--we're gonna try that and see if our model converges to our liking.
+xTT <- xTT %>%
+  mutate(xTT3 = 0,
+         xTT4 = 0,
+         xTT5 = 0)
+#adding in new columns to calculate each new iteration of xTT.
+
+
+for (iteration in 3:5) {
+  for (bin in 1:nrow(xTT)) {
+    pos_df <- model_events %>%
+      subset({{Bin == xTT[[bin, "Bin"]]} & {Event %in% c("Carry", "Play")}})
+    if (nrow(pos_df) == 0) {
+      next()
+    }
+    pos_df_freq <- pos_df$Bin.2 %>%
+      table() %>%
+      as.data.frame() %>%
+      drop_na()
+    names(pos_df_freq)[names(pos_df_freq) == "."] <- "Bin"
+    pos_df_freq$Bin <- as.numeric(as.character(pos_df_freq$Bin))
+    pos_df_freq <- pos_df_freq %>%
+      mutate(xTT_prior = 0)
+    for (each_bin in 1:nrow(pos_df_freq)) {
+      pos_df_freq$xTT_prior[each_bin] <- xTT[[pos_df_freq$Bin[each_bin], (paste("xTT", as.character(iteration - 1), sep = ""))]]
+    }
+    pos_df_freq$Weighted.xTT_prior <- (pos_df_freq$xTT_prior *
+                                    (pos_df_freq$Freq / sum(pos_df_freq$Freq)))
+    xTT[bin, (paste("xTT", as.character(iteration), sep = ""))] <- xTT[bin, (paste("xTT", as.character(iteration), sep = ""))] + 
+      (xTT[bin, "Positive.Move.Probability"] * sum(pos_df_freq$Weighted.xTT_prior))
+  }
   
+  for (bin in 1:nrow(xTT)) {
+    neg_df <- model_events %>%
+      subset({{Bin == xTT[[bin, "Bin"]]} & {Event %in% c("Failed Play", "Takeaway")}})
+    if (nrow(neg_df) == 0) {
+      next()
+    }
+    failed_passes_xTT <- 0
+    neg_df_takeaways <- neg_df %>%
+      subset(Event == "Takeaway") %>%
+      as_tibble()
+    neg_df_plays <- neg_df %>%
+      subset(Event == "Failed Play") %>%
+      as_tibble()
+    if (nrow(neg_df_plays) > 0) {
+      neg_df_freq <- neg_df_plays$Bin.2 %>%
+        table() %>%
+        as.data.frame() %>%
+        drop_na()
+      names(neg_df_freq)[names(neg_df_freq) == "."] <- "Bin"
+      neg_df_freq$Bin <- as.numeric(as.character(neg_df_freq$Bin))
+      neg_df_freq <- neg_df_freq %>%
+        mutate(xTT_prior = 0)
+      for (each_bin in 1:nrow(neg_df_freq)) {
+        neg_df_freq$xTT_prior[each_bin] <- xTT[[neg_df_freq$Bin[each_bin], (paste("xTT", as.character(iteration - 1), sep = ""))]]
+      }
+      neg_df_freq$Weighted.xTT_prior <- (neg_df_freq$xTT_prior *
+                                      (neg_df_freq$Freq / sum(neg_df_freq$Freq)))
+      failed_passes_xTT <- sum(neg_df_freq$Weighted.xTT_prior)
+    }
+    failed_passes_xTT <- ifelse(failed_passes_xTT != 0, failed_passes_xTT, 0)
+    if (nrow(neg_df_takeaways > 0)) {
+      neg_df_takeaways <- neg_df_takeaways %>%
+        select(X.Coordinate, Y.Coordinate, Rounded.X.Location, Rounded.Y.Location, Bin) %>%
+        mutate(Flipped.X.Coordinate = as.numeric((200 - as.numeric(X.Coordinate))),
+               Flipped.Y.Coordinate = as.numeric((85 - as.numeric(Y.Coordinate)))) %>%
+        mutate(Approx.Flipped.X = as.numeric(Flipped.X.Coordinate %/% 5),
+               Approx.Flipped.Y = as.numeric(Flipped.Y.Coordinate %/% 5))%>%
+        mutate(Flipped.Bin = ifelse(
+          Approx.Flipped.X > 0 & Approx.Flipped.Y > 0, 
+          ((17 * Approx.Flipped.X) + Approx.Flipped.Y),
+          ifelse(
+            Approx.Flipped.X > 0 & Approx.Flipped.Y == 0, 
+            (Approx.Flipped.X + (17 * Approx.Flipped.Y)),
+            ifelse(
+              Approx.Flipped.X == 0 & Approx.Flipped.Y > 0, 
+              Approx.Flipped.Y, 0
+            ))))
+      takeaways_xTT <- (xTT[[neg_df_takeaways$Flipped.Bin[1], (paste("xTT", as.character(iteration - 1), sep = ""))]] /
+                          nrow(neg_df_takeaways))
+    }
+    xTT[bin, (paste("xTT", as.character(iteration), sep = ""))] <- xTT[bin, (paste("xTT", as.character(iteration), sep = ""))] -
+      (xTT[bin, "Negative.Event.Probability"] * (failed_passes_xTT + takeaways_xTT))
+  }
+}  
+
+xTT_plotting <- xTT
+xTT_plotting$xTT_plotting <- scale(xTT_plotting$xTT5)
+xTT_plotting$Approx.X.Location = 0.95 * (xTT_plotting$Approx.X.Location - 100)
+xTT_plotting$Approx.Y.Location = (xTT_plotting$Approx.Y.Location - 41)
+
+more_iter_viz <-
+  nhl_rink_plot()+ 
+  theme_void()+
+  geom_point(data = (xTT_plotting %>% filter(xTT5 > 0)), 
+             aes(x = Approx.X.Location, y = Approx.Y.Location, size = xTT5),
+             color = "#032cfc", alpha = 0.5)+
+  geom_point(data = (xTT_plotting %>% filter({xTT5 == 0 & 
+      Bin %nin% c(0, 1, 15, 16, 17, 18, 33, 34, 646, 663, 679, 680, 681, 695, 696)})), 
+             aes(x = Approx.X.Location, y = Approx.Y.Location),
+             color = "#510a8c", alpha = 0.5)+
+  geom_point(data = (xTT_plotting %>% filter(xTT5 < 0)),
+             aes(x = Approx.X.Location, y = Approx.Y.Location, size = -(xTT5)),
+             color = "#f00a0a", alpha = 0.5)+
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5), 
+        plot.caption = element_text(hjust = 0.5, face = "italic"),
+        plot.subtitle = element_text(hjust = 0.5))+
+  labs(x = "", y = "", title = "Final xTT Model", 
+       subtitle = "Located in Closest 5x5 Region, Scaled by xTT",
+       caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
+more_iter_viz
+
+#Looks pretty damn good to me. Majority of regions are positive or negative, with a few zeroes.
+#Concentration in o-zone is away from slot. Why is that, when xTT of original was so slot-centric?
+#Gotta keep thinking.
