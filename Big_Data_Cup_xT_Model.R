@@ -558,6 +558,15 @@ xTT <- xTT %>%
 
 
 for (iteration in 3:5) {
+  for (col in colnames(xTT)) {
+    if(str_sub(col, -1, -1) == as.character(iteration - 1)) {
+      prior_iteration <- colnames(xTT)[which(colnames(xTT) == col)]
+    }
+    if(str_sub(col, -1, -1) == as.character(iteration)) {
+      current_iteration <- colnames(xTT)[which(colnames(xTT) == col)]
+    }
+  }
+  xTT[, current_iteration] <- xTT[, prior_iteration]
   for (bin in 1:nrow(xTT)) {
     pos_df <- model_events %>%
       subset({{Bin == xTT[[bin, "Bin"]]} & {Event %in% c("Carry", "Play")}})
@@ -573,11 +582,11 @@ for (iteration in 3:5) {
     pos_df_freq <- pos_df_freq %>%
       mutate(xTT_prior = 0)
     for (each_bin in 1:nrow(pos_df_freq)) {
-      pos_df_freq$xTT_prior[each_bin] <- xTT[[pos_df_freq$Bin[each_bin], (paste("xTT", as.character(iteration - 1), sep = ""))]]
+      pos_df_freq$xTT_prior[each_bin] <- xTT[[pos_df_freq$Bin[each_bin], prior_iteration]]
     }
     pos_df_freq$Weighted.xTT_prior <- (pos_df_freq$xTT_prior *
                                     (pos_df_freq$Freq / sum(pos_df_freq$Freq)))
-    xTT[bin, (paste("xTT", as.character(iteration), sep = ""))] <- xTT[bin, (paste("xTT", as.character(iteration), sep = ""))] + 
+    xTT[bin, current_iteration] <- xTT[bin, current_iteration] + 
       (xTT[bin, "Positive.Move.Probability"] * sum(pos_df_freq$Weighted.xTT_prior))
   }
   
@@ -604,7 +613,7 @@ for (iteration in 3:5) {
       neg_df_freq <- neg_df_freq %>%
         mutate(xTT_prior = 0)
       for (each_bin in 1:nrow(neg_df_freq)) {
-        neg_df_freq$xTT_prior[each_bin] <- xTT[[neg_df_freq$Bin[each_bin], (paste("xTT", as.character(iteration - 1), sep = ""))]]
+        neg_df_freq$xTT_prior[each_bin] <- xTT[[neg_df_freq$Bin[each_bin], prior_iteration]]
       }
       neg_df_freq$Weighted.xTT_prior <- (neg_df_freq$xTT_prior *
                                       (neg_df_freq$Freq / sum(neg_df_freq$Freq)))
@@ -628,10 +637,10 @@ for (iteration in 3:5) {
               Approx.Flipped.X == 0 & Approx.Flipped.Y > 0, 
               Approx.Flipped.Y, 0
             ))))
-      takeaways_xTT <- (xTT[[neg_df_takeaways$Flipped.Bin[1], (paste("xTT", as.character(iteration - 1), sep = ""))]] /
+      takeaways_xTT <- (xTT[[neg_df_takeaways$Flipped.Bin[1], prior_iteration]] /
                           nrow(neg_df_takeaways))
     }
-    xTT[bin, (paste("xTT", as.character(iteration), sep = ""))] <- xTT[bin, (paste("xTT", as.character(iteration), sep = ""))] -
+    xTT[bin, current_iteration] <- xTT[bin, current_iteration] -
       (xTT[bin, "Negative.Event.Probability"] * (failed_passes_xTT + takeaways_xTT))
   }
 }  
@@ -652,7 +661,7 @@ more_iter_viz <-
              aes(x = Approx.X.Location, y = Approx.Y.Location),
              color = "#510a8c", alpha = 0.5)+
   geom_point(data = (xTT_plotting %>% filter(xTT5 < 0)),
-             aes(x = Approx.X.Location, y = Approx.Y.Location, size = -(xTT5)),
+             aes(x = Approx.X.Location, y = Approx.Y.Location, size = (xTT5)),
              color = "#f00a0a", alpha = 0.5)+
   theme(legend.position = "none", plot.title = element_text(hjust = 0.5), 
         plot.caption = element_text(hjust = 0.5, face = "italic"),
