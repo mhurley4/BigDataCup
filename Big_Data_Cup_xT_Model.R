@@ -19,18 +19,21 @@
 
 #Why Is This Useful?
 #Already done for NHL (SportLogiq), so why implement it here?
-#Evaluate where prospects are above-average in creating threat--i.e. do they pass to valuable places? do they move to valuable places?
+#Evaluate where prospects are above-average in creating threat--
+#i.e. do they pass to valuable places? do they move to valuable places?
 #While certainly not expected in NHL immediately (for most), can be a useful gauge relative to NHL team's xT
 #do they create threat by making useful passes or valuable shots?
 #If future data becomes available, tracking change in threat over leagues/time could be HUGE
 #Attempts to quantify "hockey IQ" --i.e. how often does this player choose to make a play that adds value?
-#Compare general OHL to NHL also valuable--understanding how different areas have different threat levels at different competition levels
+#Compare general OHL to NHL also valuable--understanding how different areas have different 
+#threat levels at different competition levels
 #The model itself isn't necessarily new, but using it as a tool to evaluate prospects is
 #Also--maybe use k-means to cluster threat generation?
 #i.e. value added via passing, carrying, etc to characterize playstyles
 #And definitely more applications--gotta keep thinking
 
-#Maybe when finished running the model compare results to the person on Twitter running VAEP? Curious to see what results he gets
+#Maybe when finished running the model compare results to the person on Twitter running VAEP? 
+#Curious to see what results he gets
 #idk even if the dataset is large enough to run ML, it's only 40 games so I don't think so but would be a useful comparison
 
 
@@ -273,8 +276,8 @@ rand_bin_viz
 
 #6: THE FIRST ITERATION
 #Building the naive xG model.
-#We do this pretty easily: take the data for all bins where the event is a shot or a goal. The probability of scoring in 1 iteration
-#is thus Goals/(Goals + Shots).
+#We do this pretty easily: take the data for all bins where the event is a shot or a goal. 
+#The probability of scoring in 1 iteration is thus Goals/(Goals + Shots).
 
 iter_1_events <- model_events %>%
   filter(Event %in% c("Shot", "Goal"))
@@ -556,7 +559,9 @@ xTT <- xTT %>%
          xTT5 = 0)
 #adding in new columns to calculate each new iteration of xTT.
 
-
+#The majority of this loop is just copy-pasted from part 7.
+#So I've added small comments on the new stuff, and took out
+#the stuff I've already talked about.
 for (iteration in 3:5) {
   for (col in colnames(xTT)) {
     if(str_sub(col, -1, -1) == as.character(iteration - 1)) {
@@ -566,7 +571,15 @@ for (iteration in 3:5) {
       current_iteration <- colnames(xTT)[which(colnames(xTT) == col)]
     }
   }
+  #this loop basically uses the current iteration number to decide
+  #which column is the "new" xTT column and which is the "old"
   xTT[, current_iteration] <- xTT[, prior_iteration]
+  #just sets the current iteration of xTT as the prior, so it can then be adjusted.
+  
+  #Everything below this is the same, but with a few slight variations
+  #using the current_iteration and prior_iteration variables
+  #and replacing the xTT1 and xTT2 with xTT_prior and xTT_current.
+  #That's it, though.
   for (bin in 1:nrow(xTT)) {
     pos_df <- model_events %>%
       subset({{Bin == xTT[[bin, "Bin"]]} & {Event %in% c("Carry", "Play")}})
@@ -672,5 +685,4 @@ more_iter_viz <-
 more_iter_viz
 
 #Looks pretty damn good to me. Majority of regions are positive or negative, with a few zeroes.
-#Concentration in o-zone is away from slot. Why is that, when xTT of original was so slot-centric?
-#Gotta keep thinking.
+#Concentration in o-zone is in slot, with the majority of the d-zone being negative.
