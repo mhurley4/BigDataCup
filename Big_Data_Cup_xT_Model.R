@@ -179,24 +179,20 @@ model_events <- mutate(
       ifelse(
         model_events$Rounded.X.Location.2 == 0 & model_events$Rounded.Y.Location.2 > 0, model_events$Rounded.Y.Location.2, 0
       ))))
-#and then some minor changes would be needed here
-model_events %>%
-  as_tibble()
-#puts every event into a "bin" based on its location (697 possible bins but only 691 used)
+#puts every event into a "bin" based on its location (697 possible bins, 0 being at (0,0) and 696 being at (200, 80) )
 
 
 
 
 #PART 4: WHERE ARE EVENTS CONCENTRATED?
 #Finding total events per bin and then plotting to visualize where things happen
-bins_df <- tibble(Possible.Bins = c(1:691))
+bins_df <- tibble(Possible.Bins = c(0:696))
 bins_df$Freq = 0
 
 for (possible_bin in 1:nrow(bins_df)) {
   bins_df[[possible_bin, "Freq"]] = length(which(model_events$Bin == possible_bin))
 }
 
-#Data Tidying b/c weird import
 names(bins_df)[names(bins_df) == "Possible.Bins"] <- "Bin"
 #renames column to bin for easier understandability
 
@@ -363,17 +359,33 @@ xTT <- xTT %>%
              Negative.Event.Probability = 0)
 #For calculating more xTT. Positive moves are successful carries or passes.
 #Negative moves are incomplete passes or giveaways
-xTT$xTT2 <- xTT$xTT1
 
 for (row in 1:nrow(xTT)) {
   pos_df <- model_events %>%
-    subset({{Bin == xTT[[row, "Bin"]]} & {Event %in% c("Carry", "Play")}})
+    subset({Bin == xTT[[row, "Bin"]] & Event %in% c("Carry", "Play")})
+  ifelse((nrow(pos_df) > 0), 
+         (xTT[[row, "Positive.Events"]] = nrow(pos_df)),
+         (xTT[[row, "Positive.Events"]] = 0))
   neg_df <- model_events %>%
-    subset({{Bin == xTT[[row, "Bin"]]} & {Event %in% c("Incomplete Play", "Takeaway")}})
-  xTT[row, "Positive.Events"] = nrow(pos_df)
-  xTT[row, "Negative.Events"] = nrow(neg_df)
+    subset({Bin == xTT[[row, "Bin"]] & Event %in% c("Failed Play", "Takeaway")})
+  ifelse((nrow(neg_df) > 0), 
+         (xTT[[row, "Negative.Events"]] = nrow(neg_df)),
+         (xTT[[row, "Negative.Events"]] = 0))
 }
 #Just calculating the number of positive and negative events that happen in each bin
+
+xTT <- xTT %>%
+  mutate_at(c("Positive.Events", "Negative.Events"),
+            funs(lead), 
+            n = 1)
+  #for some reason, the positive and negative events are put into the next bin.
+  #The mutate_at just shifts them up 1 to account for this
+
+#drop the NA values that result
+xTT <- xTT %>%
+  mutate_at(c("Positive.Events", "Negative.Events"),
+            ~replace(., is.na(.), 0))
+
 xTT <- xTT %>%
   mutate(Positive.Move.Probability = 
            ifelse((Positive.Events >= 1), (xTT$Positive.Events / as.numeric(as.character(xTT$Freq))), 0),
@@ -429,6 +441,7 @@ for (bin in 1:nrow(xTT)) {
   if (nrow(neg_df) == 0) {
     next()
   }
+  failed_passes_xTT <- 0
   #if there aren't any, then skip this part of the loop
   neg_df_takeaways <- neg_df %>%
     subset(Event == "Takeaway") %>%
@@ -460,6 +473,7 @@ for (bin in 1:nrow(xTT)) {
   failed_passes_xTT <- sum(neg_df_freq$Weighted.xTT1)
   #finally, calculate and store the total xTT from failed passes.
   }
+  failed_passes_xTT <- ifelse(failed_passes_xTT != 0, failed_passes_xTT, 0)
   #Part 7B2: Calculating the Negative Impact of Takeaways
   if (nrow(neg_df_takeaways > 0)) {
     #basically all this block does is find the flipped x-location, 
