@@ -118,6 +118,10 @@ for (row in (1:nrow(scouting_dataset))) {
   }
 }
 
+#trying to make this work but unsure how to fix it
+model_events <- model_events %>% mutate_at(
+  vars(contains("Coordinate")), funs(as.numeric())
+)
 model_events$X.Coordinate <- as.numeric(model_events$X.Coordinate)
 model_events$X.Coordinate.2 <- as.numeric(model_events$X.Coordinate.2)
 model_events$Y.Coordinate <- as.numeric(model_events$Y.Coordinate)
@@ -152,15 +156,20 @@ all_model_events_viz
 #PART 3: CLEANING DATA 
 #goal here is to split our model events into 5x5 bins that cover the entire rink
 
-model_events$Rounded.X.Location <- model_events$X.Coordinate %/% 5
-model_events$Rounded.Y.Location <- model_events$Y.Coordinate %/% 5
+model_events <- model_events %>% mutate(
+    Rounded.X.Location = (X.Coordinate %/% 5),
+    Rounded.Y.Location = (Y.Coordinate %/% 5),
+    Rounded.X.Location.2 = (X.Coordinate.2 %/% 5),
+    Rounded.Y.Location.2 = (Y.Coordinate.2 %/% 5)
+  )
 #divides the rink into 680 5x5 squares to condense data since we don't have enough data to get more granular
 #Future Consideration w' more data: divide smaller (3x3?)
 #Singh (2019) does 12x8 bins for a soccer pitch, this seems a relatively good scaled approximation
 #although maybe we can scale to make it "square" i.e. same bins lengthwise and widthwise, but this is an easy fix
 #just change the 5 to something larger for the x-coordinate line
-model_events <- mutate(
-  model_events, Bin = ifelse(
+
+model_events <- model_events %>% mutate(
+  Bin = ifelse(
     model_events$Rounded.X.Location > 0 & model_events$Rounded.Y.Location > 0, 
     ((17 * model_events$Rounded.X.Location) + model_events$Rounded.Y.Location),
     ifelse(
@@ -168,12 +177,8 @@ model_events <- mutate(
       (model_events$Rounded.X.Location + (17 * model_events$Rounded.X.Location)),
       ifelse(
         model_events$Rounded.X.Location == 0 & model_events$Rounded.Y.Location > 0, model_events$Rounded.Y.Location, 0
-      ))))
-
-model_events$Rounded.X.Location.2 <- model_events$X.Coordinate.2 %/% 5
-model_events$Rounded.Y.Location.2 <- model_events$Y.Coordinate.2 %/% 5
-model_events <- mutate(
-  model_events, Bin.2 = ifelse(
+      ))),
+  Bin.2 = ifelse(
     model_events$Rounded.X.Location.2 > 0 & model_events$Rounded.Y.Location.2 > 0, 
     ((17 * model_events$Rounded.X.Location.2) + model_events$Rounded.Y.Location.2),
     ifelse(
@@ -181,7 +186,8 @@ model_events <- mutate(
       (model_events$Rounded.X.Location.2 + (17 * model_events$Rounded.X.Location.2)),
       ifelse(
         model_events$Rounded.X.Location.2 == 0 & model_events$Rounded.Y.Location.2 > 0, model_events$Rounded.Y.Location.2, 0
-      ))))
+      )))
+  )
 #puts every event into a "bin" based on its location (697 possible bins, 0 being at (0,0) and 696 being at (200, 80) )
 
 
@@ -190,24 +196,27 @@ model_events <- mutate(
 #PART 4: WHERE ARE EVENTS CONCENTRATED?
 #Finding total events per bin and then plotting to visualize where things happen
 bins_df <- tibble(Possible.Bins = c(0:696))
-bins_df$Freq = 0
+bins_df <- bins_df %>% mutate(
+  Freq = 0
+)
 
 for (possible_bin in 1:nrow(bins_df)) {
   bins_df[[possible_bin, "Freq"]] = length(which(model_events$Bin == possible_bin))
 }
-
-names(bins_df)[names(bins_df) == "Possible.Bins"] <- "Bin"
+bins_df <- bins_df %>% rename(
+  Bin = Possible.Bins
+)
 #renames column to bin for easier understandability
 
-bins_df <- mutate(
-  bins_df, Rounded.X.Location = Bin %/% 17
-)
-bins_df <- mutate(
-  bins_df, Rounded.Y.Location = ifelse(
-    bins_df$Rounded.X.Location == 0, Bin, (Bin - (17 * bins_df$Rounded.X.Location)))
-)
-bins_df$Approx.X.Location <- (bins_df$Rounded.X.Location * 5)
-bins_df$Approx.Y.Location <- (bins_df$Rounded.Y.Location * 5)
+bins_df <- bins_df %>% 
+  mutate(Rounded.X.Location = Bin %/% 17)
+bins_df <- bins_df %>% 
+  mutate(Rounded.Y.Location = ifelse(
+    bins_df$Rounded.X.Location == 0, Bin, (Bin - (17 * bins_df$Rounded.X.Location))))
+bins_df <- bins_df %>%
+  mutate(Approx.X.Location = (Rounded.X.Location * 5),
+    Approx.Y.Location = (Rounded.Y.Location * 5)
+  )
 #Adding in new columns with the locations of the bins; in effect working backwards to get what we had before in a new df
 
 bins_df$NumericFreq <- as.numeric(bins_df$Freq)
@@ -285,8 +294,11 @@ iter_1_bins <- iter_1_events$Bin %>%
   table() %>%
   as.data.frame() %>%
   as_tibble()
+iter_1_bins <- iter_1_bins %>% rename(
+  `Total Shots` = Freq
+  )
 names(iter_1_bins)[names(iter_1_bins) == "."] <- "Bin"
-names(iter_1_bins)[names(iter_1_bins) == "Freq"] <- "Total Shots"
+#it won't mutate for some reason
 iter_1_bins$Bin <- as.numeric(as.character(iter_1_bins$Bin))
 #this is pulling all shots into a new dataframe
 
@@ -296,15 +308,18 @@ iter_1_goals_bins <- iter_1_goals$Bin %>%
   table() %>%
   as.data.frame %>%
   as_tibble()
+iter_1_goals_bins <- iter_1_goals_bins %>%
+  rename(Goals = Freq)
 names(iter_1_goals_bins)[names(iter_1_goals_bins) == "."] <- "Bin"
-names(iter_1_goals_bins)[names(iter_1_goals_bins) == "Freq"] <- "Goals"
 iter_1_goals_bins$Bin <- as.numeric(as.character(iter_1_goals_bins$Bin))
 #same here but with just goals, it would be nice if I knew how to write a damn function
+
 
 iter_1_bins <- left_join(iter_1_bins, iter_1_goals_bins)
 iter_1_bins[is.na(iter_1_bins)] = 0
 #joins into 1 df and replaces all the NA with 0
-iter_1_bins$xTT1 = (iter_1_bins$Goals / iter_1_bins$`Total Shots`)
+iter_1_bins <- iter_1_bins %>%
+  mutate(xTT1 = (Goals / `Total Shots`))
 #our initial xTT column, appended with 1 to indicate first iteration
 
 xTT <- left_join(bins_df, iter_1_bins)
@@ -384,7 +399,7 @@ xTT <- xTT %>%
   #for some reason, the positive and negative events are put into the next bin.
   #The mutate_at just shifts them up 1 to account for this
 
-#drop the NA values that result
+#drop the NA values that result and replace them with 0
 xTT <- xTT %>%
   mutate_at(c("Positive.Events", "Negative.Events"),
             ~replace(., is.na(.), 0))
@@ -658,10 +673,13 @@ for (iteration in 3:5) {
   }
 }  
 
+#plotting to check it out
 xTT_plotting <- xTT
-xTT_plotting$xTT_plotting <- scale(xTT_plotting$xTT5)
-xTT_plotting$Approx.X.Location = 0.96 * (xTT_plotting$Approx.X.Location - 99)
-xTT_plotting$Approx.Y.Location = (xTT_plotting$Approx.Y.Location - 40)
+xTT_plotting <- xTT_plotting %>%
+  mutate(
+    Approx.X.Location = (0.96 * (Approx.X.Location - 99)),
+    Approx.Y.Location = Approx.Y.Location - 40
+  )
 
 more_iter_viz <-
   nhl_rink_plot()+ 
@@ -674,15 +692,48 @@ more_iter_viz <-
              aes(x = Approx.X.Location, y = Approx.Y.Location),
              color = "#510a8c", alpha = 0.5)+
   geom_point(data = (xTT_plotting %>% filter(xTT5 < 0)),
-             aes(x = Approx.X.Location, y = Approx.Y.Location, size = (xTT5)),
+             aes(x = Approx.X.Location, y = Approx.Y.Location, size = -(xTT5)),
              color = "#f00a0a", alpha = 0.5)+
   theme(legend.position = "none", plot.title = element_text(hjust = 0.5), 
         plot.caption = element_text(hjust = 0.5, face = "italic"),
         plot.subtitle = element_text(hjust = 0.5))+
-  labs(x = "", y = "", title = "Final OHL xTT Model", 
+  labs(x = "", y = "", title = "OHL Expected Total Threat (xTT)", 
        subtitle = "Located in Closest 5x5 Region, Scaled by xTT",
        caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
 more_iter_viz
-
 #Looks pretty damn good to me. Majority of regions are positive or negative, with a few zeroes.
 #Concentration in o-zone is in slot, with the majority of the d-zone being negative.
+
+
+
+
+#PART 9: Applying xTT
+model_events <- model_events %>%
+  mutate(xTT = 0,
+         xTT.2 = 0,
+         xTT.Change = 0)
+#adding in columns to model_events to describe how the xTT changes in an event
+
+for (event in 1:nrow(model_events)) {
+  model_events[[event, "xTT"]] <- xTT[[(model_events$Bin[event]), "xTT5"]]
+  if(is.na(model_events$Bin.2[event])) {
+    next()
+  }
+  model_events[[event, "xTT.2"]] <- xTT[[(model_events$Bin.2[event]), "xTT5"]]
+}
+#finding the xTT values before and after the event
+
+model_events <- model_events %>%
+  subset(Event %in% c("Play", "Carry", "Takeaway", "Failed Play")) %>%
+  mutate(xTT.Change = ifelse(
+    (Event %in% c("Play", "Carry", "Failed Play")), (xTT.2 - xTT), xTT )
+    #ifelse(Event == "Takeaway", xTT, 
+    #ifelse({{Event == "Failed Play"} & {xTT.2 - xTT > 0}}, (xTT - xTT.2), (xTT.2 - xTT))))
+  )
+#calculating the change in xTT from those values. 
+#Carries and Plays get you the change in xTT.
+#Takeaways give you the xTT where they occur.
+#Failed Plays give you the change in xTT, always negative
+
+player_events <- model_events %>%
+  select(Team, Player, Event, xTT, xTT.2, xTT.Change)
