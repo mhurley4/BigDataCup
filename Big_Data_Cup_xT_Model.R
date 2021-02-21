@@ -691,12 +691,10 @@ more_iter_viz <-
       alpha = 0.55)+
   theme(legend.position = "right",
         plot.title = element_text(hjust = 0.5), 
-        plot.caption = element_text(hjust = 0.5, face = "italic"),
-        plot.subtitle = element_text(hjust = 0.5))+
-  scale_fill_gradient(low = "blue", high = "red")+
+        plot.caption = element_text(hjust = 0.5, face = "italic"))+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "purple")+
   labs(x = "", y = "", title = "OHL Expected Total Threat (xTT)",
-       fill = "xTT of Zone", 
-       subtitle = "Located in Closest 5x5 Region",
+       fill = "xTT of Zone",
        caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
 
 more_iter_viz
@@ -725,7 +723,10 @@ for (event in 1:nrow(model_events)) {
 model_events <- model_events %>%
   subset(Event %in% c("Play", "Carry", "Takeaway", "Failed Play")) %>%
   mutate(xTT.Change = ifelse(
-    (Event %in% c("Play", "Carry", "Failed Play")), (xTT.2 - xTT), xTT )
+    (Event %in% c("Play", "Carry")), (xTT.2 - xTT),
+    ifelse((Event == "Failed Play"), -(xTT.2 + xTT),
+           #ifelse((xTT.2 > xTT), -(xTT.2 - xTT), (xTT.2 - xTT)), 
+           xTT))
   )
 #calculating the change in xTT from those values. 
 #Carries, Plays, and Failed Plays get you the change in xTT.
