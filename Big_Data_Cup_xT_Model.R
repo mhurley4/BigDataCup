@@ -694,9 +694,8 @@ more_iter_viz <-
         plot.caption = element_text(hjust = 0.5, face = "italic"),
         plot.subtitle = element_text(hjust = 0.5))+
   scale_fill_gradient(low = "blue", high = "red")+
-  scale_size(guide = "none")+
   labs(x = "", y = "", title = "OHL Expected Total Threat (xTT)",
-       color = "xTT of Zone", 
+       fill = "xTT of Zone", 
        subtitle = "Located in Closest 5x5 Region",
        caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
 
