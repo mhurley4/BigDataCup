@@ -727,13 +727,14 @@ model_events <- model_events %>%
   subset(Event %in% c("Play", "Carry", "Takeaway", "Failed Play")) %>%
   mutate(xTT.Change = ifelse(
     (Event %in% c("Play", "Carry", "Failed Play")), (xTT.2 - xTT), xTT )
-    #ifelse(Event == "Takeaway", xTT, 
-    #ifelse({{Event == "Failed Play"} & {xTT.2 - xTT > 0}}, (xTT - xTT.2), (xTT.2 - xTT))))
   )
 #calculating the change in xTT from those values. 
-#Carries and Plays get you the change in xTT.
+#Carries, Plays, and Failed Plays get you the change in xTT.
 #Takeaways give you the xTT where they occur.
-#Failed Plays give you the change in xTT, always negative
 
 player_events <- model_events %>%
-  select(Team, Player, Event, xTT, xTT.2, xTT.Change)
+  select(Team, Player, Event, xTT, xTT.2, xTT.Change) %>%
+  group_by(Player, Team) %>%
+  summarise(Total.XTT = sum(xTT.Change),
+            Average.XTT = Total.XTT / length(Event),
+  )
