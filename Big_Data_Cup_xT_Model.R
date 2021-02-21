@@ -42,6 +42,7 @@
 #PART 1: SETUP
 #(libraries I'll use, downloading data, subsetting data into what we'll use, etc.)
 
+library(plyr)
 library(tidyverse)
 library(ggforce)
 '%nin%' <- Negate('%in%')
@@ -732,9 +733,45 @@ model_events <- model_events %>%
 #Carries, Plays, and Failed Plays get you the change in xTT.
 #Takeaways give you the xTT where they occur.
 
-player_events <- model_events %>%
+plays <- model_events %>%
+  subset(Event == "Play")
+carries <- model_events %>%
+  subset(Event == "Carry")
+takeaways <- model_events %>%
+  subset(Event == "Takeaway")
+failed_plays <- model_events %>%
+  subset(Event = "Failed Play")
+
+total_xTT <- model_events %>%
   select(Team, Player, Event, xTT, xTT.2, xTT.Change) %>%
   group_by(Player, Team) %>%
-  summarise(Total.XTT = sum(xTT.Change),
-            Average.XTT = Total.XTT / length(Event),
+  summarise(Total.xTT = sum(xTT.Change),
+            Average.xTT = Total.xTT / length(Event),
   )
+
+plays_xTT <- plays %>%
+  select(Team, Player, Event, xTT, xTT.2, xTT.Change) %>%
+  group_by(Player, Team) %>%
+  summarise(xTT.From.Plays = sum(xTT.Change),
+            Average.Play.xTT = xTT.From.Plays / length(Event),
+  )
+
+carries_xTT <- carries %>%
+  select(Team, Player, Event, xTT, xTT.2, xTT.Change) %>%
+  group_by(Player, Team) %>%
+  summarise(xTT.From.Carries = sum(xTT.Change),
+            Average.Carry.xTT = xTT.From.Carries / length(Event),
+  )
+takeaways_xTT <- takeaways %>%
+  select(Team, Player, Event, xTT, xTT.2, xTT.Change) %>%
+  group_by(Player, Team) %>%
+  summarise(xTT.From.Takeaways = sum(xTT.Change),
+            Average.Takeaway.xTT = xTT.From.Takeaways / length(Event),
+  )
+failed_plays_xTT <- failed_plays %>%
+  select(Team, Player, Event, xTT, xTT.2, xTT.Change) %>%
+  group_by(Player, Team) %>%
+  summarise(xTT.From.Failed_Plays = sum(xTT.Change),
+            Average.Failed_Play.xTT = xTT.From.Failed_Plays / length(Event),
+  )
+players_xTT <- join_all(list(total_xTT, plays_xTT, carries_xTT, takeaways_xTT, failed_plays_xTT))
