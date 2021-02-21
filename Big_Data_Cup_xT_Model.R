@@ -42,7 +42,6 @@
 #PART 1: SETUP
 #(libraries I'll use, downloading data, subsetting data into what we'll use, etc.)
 
-library(plyr)
 library(tidyverse)
 library(ggforce)
 '%nin%' <- Negate('%in%')
@@ -678,29 +677,29 @@ for (iteration in 3:5) {
 xTT_plotting <- xTT
 xTT_plotting <- xTT_plotting %>%
   mutate(
-    Approx.X.Location = (0.96 * (Approx.X.Location - 99)),
+    Approx.X.Location = (0.96* (Approx.X.Location - 100)),
     Approx.Y.Location = Approx.Y.Location - 40
   )
+
 
 more_iter_viz <-
   nhl_rink_plot()+ 
   theme_void()+
-  geom_point(data = (xTT_plotting %>% filter(xTT5 > 0)), 
-             aes(x = Approx.X.Location, y = Approx.Y.Location, size = xTT5),
-             color = "#032cfc", alpha = 0.5)+
-  geom_point(data = (xTT_plotting %>% filter({xTT5 == 0 & 
-      Bin %nin% c(0, 1, 15, 16, 17, 18, 19, 33, 34, 50, 646, 662, 663, 664, 678, 679, 680, 681, 682, 694, 695, 696)})), 
-             aes(x = Approx.X.Location, y = Approx.Y.Location),
-             color = "#510a8c", alpha = 0.5)+
-  geom_point(data = (xTT_plotting %>% filter(xTT5 < 0)),
-             aes(x = Approx.X.Location, y = Approx.Y.Location, size = -(xTT5)),
-             color = "#f00a0a", alpha = 0.5)+
-  theme(legend.position = "none", plot.title = element_text(hjust = 0.5), 
+  geom_tile(data = (xTT_plotting %>% filter(
+      Bin %nin% c(0, 1, 2, 14, 15, 16, 17, 18, 32, 33, 34, 50, 646, 662, 663, 664, 678, 679, 680, 681, 682, 694, 695, 696))), 
+      aes(x = Approx.X.Location, y = Approx.Y.Location, fill = xTT5),
+      alpha = 0.55)+
+  theme(legend.position = "right",
+        plot.title = element_text(hjust = 0.5), 
         plot.caption = element_text(hjust = 0.5, face = "italic"),
         plot.subtitle = element_text(hjust = 0.5))+
-  labs(x = "", y = "", title = "OHL Expected Total Threat (xTT)", 
-       subtitle = "Located in Closest 5x5 Region, Scaled by xTT",
+  scale_fill_gradient(low = "blue", high = "red")+
+  scale_size(guide = "none")+
+  labs(x = "", y = "", title = "OHL Expected Total Threat (xTT)",
+       color = "xTT of Zone", 
+       subtitle = "Located in Closest 5x5 Region",
        caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
+
 more_iter_viz
 #Looks pretty damn good to me. Majority of regions are positive or negative, with a few zeroes.
 #Concentration in o-zone is in slot, with the majority of the d-zone being negative.
@@ -740,7 +739,7 @@ carries <- model_events %>%
 takeaways <- model_events %>%
   subset(Event == "Takeaway")
 failed_plays <- model_events %>%
-  subset(Event = "Failed Play")
+  subset(Event == "Failed Play")
 
 total_xTT <- model_events %>%
   select(Team, Player, Event, xTT, xTT.2, xTT.Change) %>%
@@ -774,4 +773,8 @@ failed_plays_xTT <- failed_plays %>%
   summarise(xTT.From.Failed_Plays = sum(xTT.Change),
             Average.Failed_Play.xTT = xTT.From.Failed_Plays / length(Event),
   )
-players_xTT <- join_all(list(total_xTT, plays_xTT, carries_xTT, takeaways_xTT, failed_plays_xTT))
+
+players_xTT <- plyr::join_all(list(total_xTT, plays_xTT, carries_xTT, takeaways_xTT, failed_plays_xTT)) %>%
+  replace(is.na(.), 0)
+#results in a df with all players in the dataset, and the xTT they generate, broken down by event type
+#and also with the averages
