@@ -1,6 +1,6 @@
 #Big Data Cup xTT Model
 #Avery Ellis and Matt Hurley
-#2/21/2021
+#2/22/2021
 
 
 
@@ -104,22 +104,22 @@ model_events <- model_events %>% mutate(
 
 model_events <- model_events %>% mutate(
   Bin = ifelse(
-    model_events$Rounded.X.Location > 0 & model_events$Rounded.Y.Location > 0, 
+    Rounded.X.Location > 0 & Rounded.Y.Location > 0, 
     ((17 * model_events$Rounded.X.Location) + model_events$Rounded.Y.Location),
     ifelse(
-      model_events$Rounded.X.Location > 0 & model_events$Rounded.Y.Location == 0, 
-      (model_events$Rounded.X.Location + (17 * model_events$Rounded.X.Location)),
+      Rounded.X.Location > 0 & Rounded.Y.Location == 0, 
+      (Rounded.X.Location + (17 * Rounded.X.Location)),
       ifelse(
-        model_events$Rounded.X.Location == 0 & model_events$Rounded.Y.Location > 0, model_events$Rounded.Y.Location, 0
+        Rounded.X.Location == 0 & Rounded.Y.Location > 0, Rounded.Y.Location, 0
       ))),
   Bin.2 = ifelse(
-    model_events$Rounded.X.Location.2 > 0 & model_events$Rounded.Y.Location.2 > 0, 
-    ((17 * model_events$Rounded.X.Location.2) + model_events$Rounded.Y.Location.2),
+    Rounded.X.Location.2 > 0 & Rounded.Y.Location.2 > 0, 
+    ((17 * Rounded.X.Location.2) + Rounded.Y.Location.2),
     ifelse(
-      model_events$Rounded.X.Location.2 > 0 & model_events$Rounded.Y.Location.2 == 0, 
-      (model_events$Rounded.X.Location.2 + (17 * model_events$Rounded.X.Location.2)),
+      Rounded.X.Location.2 > 0 & Rounded.Y.Location.2 == 0, 
+      (Rounded.X.Location.2 + (17 * Rounded.X.Location.2)),
       ifelse(
-        model_events$Rounded.X.Location.2 == 0 & model_events$Rounded.Y.Location.2 > 0, model_events$Rounded.Y.Location.2, 0
+        Rounded.X.Location.2 == 0 & Rounded.Y.Location.2 > 0, Rounded.Y.Location.2, 0
       )))
   )
 #puts every event into a "bin" based on its location (697 possible bins, 0 being at (0,0) and 696 being at (200, 80) )
@@ -146,7 +146,7 @@ bins_df <- bins_df %>%
   mutate(Rounded.X.Location = Bin %/% 17)
 bins_df <- bins_df %>% 
   mutate(Rounded.Y.Location = ifelse(
-    bins_df$Rounded.X.Location == 0, Bin, (Bin - (17 * bins_df$Rounded.X.Location))))
+    Rounded.X.Location == 0, Bin, (Bin - (17 * Rounded.X.Location))))
 bins_df <- bins_df %>%
   mutate(Approx.X.Location = (Rounded.X.Location * 5),
     Approx.Y.Location = (Rounded.Y.Location * 5)
