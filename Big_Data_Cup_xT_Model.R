@@ -490,9 +490,7 @@ xTT_plotting <- xTT_plotting %>%
 
 upperlimit <- 0.33
 lowerlimit <- -0.035
-for (row in (1:nrow(xTT_plotting))) {
-  xTT_plotting <- xTT_plotting %>% mutate(xTT5 = ifelse((xTT5 > upperlimit), (upperlimit), (xTT5)), xTT5 = ifelse((xTT5 < lowerlimit),(lowerlimit),(xTT5)))
-}
+xTT_plotting <- xTT_plotting %>% mutate(xTT5 = ifelse((xTT5 > upperlimit), (upperlimit), (ifelse((xTT5 < lowerlimit),(lowerlimit),(xTT5)))))
 #sets limits of colormap
 
 color1 = "blue" # low color
