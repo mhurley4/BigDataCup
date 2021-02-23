@@ -53,7 +53,7 @@ for (row in (1:nrow(scouting_dataset))) {
         scouting_dataset[row, ]$Home.Team.Skaters, scouting_dataset[row, ]$Away.Team.Skaters, 
         scouting_dataset[row, ]$Home.Team.Goals, scouting_dataset[row, ]$Away.Team.Goals, scouting_dataset[row, ]$Team,
         scouting_dataset[row, ]$Player, "Carry", 
-        as.character(scouting_dataset[row, ]$X.Coordinate.2), as.character(scouting_dataset[row, ]$Y.Coordinate.2),
+        scouting_dataset[row, ]$X.Coordinate.2, scouting_dataset[row, ]$Y.Coordinate.2,
         "", "", "", "", "", scouting_dataset[(row + 1), ]$X.Coordinate, scouting_dataset[(row + 1), ]$Y.Coordinate)
         )
     }
