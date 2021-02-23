@@ -12,29 +12,22 @@ library(ggforce)
 '%nin%' <- Negate('%in%')
 
 full_scouting_dataset <- read.csv("https://raw.githubusercontent.com/bigdatacup/Big-Data-Cup-2021/main/hackathon_scouting.csv")
-scouting_dataset <- full_scouting_dataset %>%
-  subset({{Home.Team.Skaters == 5} & {Away.Team.Skaters == 5}})
-scouting_dataset$X.Coordinate <- as.character(scouting_dataset$X.Coordinate)
-scouting_dataset$Y.Coordinate <- as.character(scouting_dataset$Y.Coordinate)
-
-model_events <- scouting_dataset %>%
-  subset({Event == "Shot" | Event == "Play" | Event == "Goal" | Event == "Takeaway"})
-#this pulls all the data from the scouting dataset and then subsets it to all our events we use for the xT model
-
+full_scouting_dataset$X.Coordinate <- as.character(full_scouting_dataset$X.Coordinate)
+full_scouting_dataset$Y.Coordinate <- as.character(full_scouting_dataset$Y.Coordinate)
 
 #Creating "Carries" --i.e. moving with the puck, based on the event data given
-for (row in 1:nrow(scouting_dataset)) {
-  if ({scouting_dataset[row, ]$Event %in% c("Puck Recovery", "Takeaway")} & 
-      {scouting_dataset[(row + 1), ]$Event %in% c("Play", "Incomplete Play", "Dump In/Out", "Shot", "Goal")} &
-      {scouting_dataset[row, ]$Player == scouting_dataset[(row + 1), ]$Player}) {
-    model_events <- model_events %>%
-      rbind(c(scouting_dataset[row, "game_date"], scouting_dataset[row, "Home.Team"], scouting_dataset[row, "Away.Team"],
-      scouting_dataset[row, "Period"], scouting_dataset[row, "Clock"],
-      scouting_dataset[row, "Home.Team.Skaters"], scouting_dataset[row, "Away.Team.Skaters"], 
-      scouting_dataset[row, "Home.Team.Goals"], scouting_dataset[row, "Away.Team.Goals"], scouting_dataset[row, "Team"],
-      scouting_dataset[row, "Player"], "Carry", 
-      scouting_dataset[row, "X.Coordinate"], scouting_dataset[row, "Y.Coordinate"],
-      "", "", "", "", "", scouting_dataset[(row + 1), "X.Coordinate"], scouting_dataset[(row + 1), "Y.Coordinate"])
+for (row in 1:nrow(full_scouting_dataset)) {
+  if ({full_scouting_dataset[row, ]$Event %in% c("Puck Recovery", "Takeaway")} & 
+      {full_scouting_dataset[(row + 1), ]$Event %in% c("Play", "Incomplete Play", "Dump In/Out", "Shot", "Goal")} &
+      {full_scouting_dataset[row, ]$Player == full_scouting_dataset[(row + 1), ]$Player}) {
+    full_scouting_dataset <- full_scouting_dataset %>%
+      rbind(c(full_scouting_dataset[row, "game_date"], full_scouting_dataset[row, "Home.Team"], full_scouting_dataset[row, "Away.Team"],
+              full_scouting_dataset[row, "Period"], full_scouting_dataset[row, "Clock"],
+              full_scouting_dataset[row, "Home.Team.Skaters"], full_scouting_dataset[row, "Away.Team.Skaters"], 
+              full_scouting_dataset[row, "Home.Team.Goals"], full_scouting_dataset[row, "Away.Team.Goals"], full_scouting_dataset[row, "Team"],
+              full_scouting_dataset[row, "Player"], "Carry", 
+              full_scouting_dataset[row, "X.Coordinate"], full_scouting_dataset[row, "Y.Coordinate"],
+              "", "", "", "", "", full_scouting_dataset[(row + 1), "X.Coordinate"], full_scouting_dataset[(row + 1), "Y.Coordinate"])
       )
   }
 }
@@ -43,45 +36,52 @@ for (row in 1:nrow(scouting_dataset)) {
 #based on the location difference
 #NOTE: this is pretty naive and assumes moving in a straight line
 #with tracking data, could evaluate carries that aren't straight (which is almost all of them)
-for (row in (1:nrow(scouting_dataset))) {
-  if ({scouting_dataset[row, ]$Event == "Play"} &
-      {scouting_dataset[(row + 1), ]$Event %in% c("Play", "Incomplete Play", "Takeaway", "Puck Recovery", "Dump In/Out", "Shot", "Goal")} &
-      {scouting_dataset[row, ]$Player.2 == scouting_dataset[(row + 1), ]$Player}) {
-    model_events <- model_events %>%
-        rbind(c(scouting_dataset[row, ]$game_date, scouting_dataset[row, ]$Home.Team, scouting_dataset[row, ]$Away.Team,
-        scouting_dataset[row, ]$Period, scouting_dataset[row, ]$Clock,
-        scouting_dataset[row, ]$Home.Team.Skaters, scouting_dataset[row, ]$Away.Team.Skaters, 
-        scouting_dataset[row, ]$Home.Team.Goals, scouting_dataset[row, ]$Away.Team.Goals, scouting_dataset[row, ]$Team,
-        scouting_dataset[row, ]$Player, "Carry", 
-        scouting_dataset[row, ]$X.Coordinate.2, scouting_dataset[row, ]$Y.Coordinate.2,
-        "", "", "", "", "", scouting_dataset[(row + 1), ]$X.Coordinate, scouting_dataset[(row + 1), ]$Y.Coordinate)
-        )
-    }
+for (row in (1:nrow(full_scouting_dataset))) {
+  if ({full_scouting_dataset[row, ]$Event == "Play"} &
+      {full_scouting_dataset[(row + 1), ]$Event %in% c("Play", "Incomplete Play", "Takeaway", "Puck Recovery", "Dump In/Out", "Shot", "Goal")} &
+      {full_scouting_dataset[row, ]$Player.2 == full_scouting_dataset[(row + 1), ]$Player}) {
+    full_scouting_dataset <- full_scouting_dataset %>%
+      rbind(c(full_scouting_dataset[row, ]$game_date, full_scouting_dataset[row, ]$Home.Team, full_scouting_dataset[row, ]$Away.Team,
+              full_scouting_dataset[row, ]$Period, full_scouting_dataset[row, ]$Clock,
+              full_scouting_dataset[row, ]$Home.Team.Skaters, full_scouting_dataset[row, ]$Away.Team.Skaters, 
+              full_scouting_dataset[row, ]$Home.Team.Goals, full_scouting_dataset[row, ]$Away.Team.Goals, full_scouting_dataset[row, ]$Team,
+              full_scouting_dataset[row, ]$Player, "Carry", 
+              full_scouting_dataset[row, ]$X.Coordinate.2, full_scouting_dataset[row, ]$Y.Coordinate.2,
+              "", "", "", "", "", full_scouting_dataset[(row + 1), ]$X.Coordinate, full_scouting_dataset[(row + 1), ]$Y.Coordinate)
+      )
+  }
 }
 
 #One more thing we gotta make based on data inferences: failed passes.
 #Makes calculating the negative Markov transition matrix a lot easier.
 
-for (row in (1:nrow(scouting_dataset))) {
-  if ({scouting_dataset[row, ]$Event == "Incomplete Play"} &
-      {scouting_dataset[(row + 1), ]$Event == "Puck Recovery"} &
-      {scouting_dataset[row, ]$Team != scouting_dataset[(row + 1), ]$Team}) {
-    model_events <- model_events %>%
-      rbind(c(scouting_dataset[row, ]$game_date, scouting_dataset[row, ]$Home.Team, scouting_dataset[row, ]$Away.Team,
-              scouting_dataset[row, ]$Period, scouting_dataset[row, ]$Clock,
-              scouting_dataset[row, ]$Home.Team.Skaters, scouting_dataset[row, ]$Away.Team.Skaters, 
-              scouting_dataset[row, ]$Home.Team.Goals, scouting_dataset[row, ]$Away.Team.Goals, scouting_dataset[row, ]$Team,
-              scouting_dataset[row, ]$Player, "Failed Play", 
-              scouting_dataset[row, ]$X.Coordinate, scouting_dataset[row, ]$Y.Coordinate, "", "", "", "", 
-              scouting_dataset[(row + 1), ]$Player, 
-              scouting_dataset[(row + 1), ]$X.Coordinate, scouting_dataset[(row + 1), ]$Y.Coordinate)
+for (row in (1:nrow(full_scouting_dataset))) {
+  if ({full_scouting_dataset[row, ]$Event == "Incomplete Play"} &
+      {full_scouting_dataset[(row + 1), ]$Event == "Puck Recovery"} &
+      {full_scouting_dataset[row, ]$Team != full_scouting_dataset[(row + 1), ]$Team}) {
+    full_scouting_dataset <- full_scouting_dataset %>%
+      rbind(c(full_scouting_dataset[row, ]$game_date, full_scouting_dataset[row, ]$Home.Team, full_scouting_dataset[row, ]$Away.Team,
+              full_scouting_dataset[row, ]$Period, full_scouting_dataset[row, ]$Clock,
+              full_scouting_dataset[row, ]$Home.Team.Skaters, full_scouting_dataset[row, ]$Away.Team.Skaters, 
+              full_scouting_dataset[row, ]$Home.Team.Goals, full_scouting_dataset[row, ]$Away.Team.Goals, full_scouting_dataset[row, ]$Team,
+              full_scouting_dataset[row, ]$Player, "Failed Play", 
+              full_scouting_dataset[row, ]$X.Coordinate, full_scouting_dataset[row, ]$Y.Coordinate, "", "", "", "", 
+              full_scouting_dataset[(row + 1), ]$Player, 
+              full_scouting_dataset[(row + 1), ]$X.Coordinate, full_scouting_dataset[(row + 1), ]$Y.Coordinate)
       )
   }
 }
+scouting_dataset <- full_scouting_dataset %>%
+  subset({{Home.Team.Skaters == 5} & {Away.Team.Skaters == 5}})
+
+
+#this pulls all the data from the scouting dataset and then subsets it to all our events we use for the xT model
+
+
 
 #convert the coordinate data to numeric type
 coordcolumns = c('X.Coordinate','X.Coordinate.2','Y.Coordinate','Y.Coordinate.2')
-model_events[, coordcolumns] <- apply(model_events[, coordcolumns], 2, function(x) as.numeric(as.character(x)))
+full_scouting_dataset[, coordcolumns] <- apply(full_scouting_dataset[, coordcolumns], 2, function(x) as.numeric(as.character(x)))
 #left the below in as comments in case you want to try to get it to work
 #trying to make this work but unsure how to fix it
 #model_events <- model_events %>% mutate_at(
@@ -93,7 +93,7 @@ model_events[, coordcolumns] <- apply(model_events[, coordcolumns], 2, function(
 #PART 2: CLEANING DATA 
 #splitting our events into 5x5 bins that cover the entire rink
 
-model_events <- model_events %>% mutate(
+full_scouting_dataset <- full_scouting_dataset %>% mutate(
     Rounded.X.Location = (X.Coordinate %/% 5),
     Rounded.Y.Location = (Y.Coordinate %/% 5),
     Rounded.X.Location.2 = (X.Coordinate.2 %/% 5),
@@ -102,7 +102,7 @@ model_events <- model_events %>% mutate(
 #divides the rink into 697 5x5 squares to condense data since we don't have enough data to get more granular
 #Future Consideration w' more data: divide smaller (3x3?)
 
-model_events <- model_events %>% mutate(
+full_scouting_dataset <- full_scouting_dataset %>% mutate(
   Bin = ifelse(
     Rounded.X.Location > 0 & Rounded.Y.Location > 0, 
     ((17 * Rounded.X.Location) + Rounded.Y.Location),
@@ -129,6 +129,12 @@ model_events <- model_events %>% mutate(
 
 #PART 3: BIN CONCENTRATIONS
 #Finding total events per bin and then plotting to visualize where things happen
+model_events <- full_scouting_dataset %>%
+  subset({{Home.Team.Skaters == 5} & {Away.Team.Skaters == 5}})
+model_events <- model_events %>%
+  subset({Event == "Shot" | Event == "Play" | Event == "Goal" | 
+      Event == "Takeaway" | Event == "Carry" | Event == "Failed Play"})
+
 bins_df <- tibble(Possible.Bins = c(0:696))
 bins_df <- bins_df %>% mutate(
   Freq = 0
@@ -490,7 +496,9 @@ xTT_plotting <- xTT_plotting %>%
 
 upperlimit <- 0.33
 lowerlimit <- -0.035
-xTT_plotting <- xTT_plotting %>% mutate(xTT5 = ifelse((xTT5 > upperlimit), (upperlimit), (ifelse((xTT5 < lowerlimit),(lowerlimit),(xTT5)))))
+xTT_plotting <- xTT_plotting %>% 
+  mutate(xTT5 = ifelse((xTT5 > upperlimit), (upperlimit), 
+                       (ifelse((xTT5 < lowerlimit),(lowerlimit),(xTT5)))))
 #sets limits of colormap
 
 color1 = "blue" # low color
@@ -510,38 +518,40 @@ more_iter_viz <-
   scale_fill_gradient(low = color1, high = color2)+
   labs(x = "", y = "", title = "OHL Expected Total Threat (xTT)",
        fill = "xTT of Zone",
-       caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes, color1/color2") #can delete colors from caption later
+       caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes") #can delete colors from caption later
 
 more_iter_viz
 
 #Majority of regions are positive or (barely) negative, with a few zeroes.
 #Concentration in o-zone is in slot, with the majority of the d-zone being negative.
 
-
+model1 = glm(goal/no goal ~ dist + angle, data=df, family = binomial(link=logit()))
 
 
 #PART 7: Applying xTT
-model_events <- model_events %>%
+full_scouting_dataset <- full_scouting_dataset %>%
   mutate(xTT = 0,
          xTT.2 = 0,
          xTT.Change = 0)
-#adding in columns to model_events to describe how the xTT changes in an event
+#adding in columns to the scouting_dataset to describe how the xTT changes in an event
 
-for (event in 1:nrow(model_events)) {
-  model_events[[event, "xTT"]] <- xTT[[(model_events$Bin[event]), "xTT5"]]
-  if(is.na(model_events$Bin.2[event])) {
+for (event in 1:nrow(full_scouting_dataset)) {
+  full_scouting_dataset[[event, "xTT"]] <- xTT[[(full_scouting_dataset$Bin[event]), "xTT5"]]
+  if(is.na(full_scouting_dataset$Bin.2[event])) {
     next()
   }
-  model_events[[event, "xTT.2"]] <- xTT[[(model_events$Bin.2[event]), "xTT5"]]
+  full_scouting_dataset[[event, "xTT.2"]] <- xTT[[(full_scouting_dataset$Bin.2[event]), "xTT5"]]
 }
 #finding the xTT values before and after the event
 
-model_events <- model_events %>%
-  subset(Event %in% c("Play", "Carry", "Takeaway", "Failed Play")) %>%
+valued_events <- full_scouting_dataset %>%
+  subset(Event %in% c("Play", "Carry", "Takeaway", "Failed Play", "Incomplete Play", "Puck Recovery")) %>%
   mutate(xTT.Change = ifelse(
     (Event %in% c("Play", "Carry")), (xTT.2 - xTT),
-    ifelse((Event == "Failed Play"), -(xTT.2 + xTT),
-           xTT))
+    ifelse((Event == "Failed Play"), -(xTT.2 + xTT), 
+           ifelse((Event == "Incomplete Play"), -xTT, xTT)
+    )
+  )
   )
 #calculating the change in xTT from those values. 
 #Carries and Plays get you the pure change in xTT.
@@ -549,16 +559,16 @@ model_events <- model_events %>%
 #this is because the s
 #Takeaways give you the xTT where they occur.
 
-plays <- model_events %>%
+plays <- valued_events %>%
   subset(Event == "Play")
-carries <- model_events %>%
+carries <- valued_events %>%
   subset(Event == "Carry")
-takeaways <- model_events %>%
+takeaways <- valued_events %>%
   subset(Event == "Takeaway")
-failed_plays <- model_events %>%
+failed_plays <- valued_events %>%
   subset(Event == "Failed Play")
 
-total_xTT <- model_events %>%
+total_xTT <- valued_events %>%
   select(Team, Player, Event, xTT, xTT.2, xTT.Change) %>%
   group_by(Player, Team) %>%
   summarise(Total.xTT = sum(xTT.Change),
@@ -595,3 +605,50 @@ players_xTT <- plyr::join_all(list(total_xTT, plays_xTT, carries_xTT, takeaways_
   replace(is.na(.), 0)
 #results in a df with all players in the dataset, and the xTT they generate, broken down by event type
 #and also with the averages
+
+
+
+
+#PART 8: Calculating xTT Chain
+
+#create 2 dataframes: one for all the events between every stoppage
+stoppage_interval <- tibble(colnames(full_scouting_dataset))
+#and then one for each possession that happens between that stoppage
+possession_df <- tibble(colnames(full_scouting_dataset))
+#and delineate the events we're going to assign value to
+xTT_events <- c("Play", "Failed Play", "Carry", "Takeaway")
+
+
+for (event in 1:nrow(full_scouting_dataset)) {
+  if ({(event$Event == "Faceoff Win") & nrow(stoppage_interval) == 0}) {
+    #all intervals begin with a faceoff win.
+    stoppage_interval <- stoppage_interval %>%
+      rbind(full_scouting_dataset[event, ])
+  } else if ({event$Event != "Faceoff Win" & nrow(stoppage_interval) > 0}) {
+    stoppage_interval <- stoppage_interval %>%
+      rbind(full_scouting_dataset[event, ])
+    #if the event isn't a faceoff win, then append the event, as it happens
+    #between two faceoff wins.
+  } else if ({event$Event == "Faceoff Win" & nrow(stoppage_interval > 0)}) {
+    #now, if the event IS a faceoff win, then the previous interval has concluded. then
+    #we can subset it into possessions.
+    team_possessing <- stoppage_interval[[1, "Team"]]
+    for (row in 2:(nrow(stoppage_interval) - 1)) {
+      #excluding the first and last rows, cause we know they're faceoff wins
+      if ({row$Event %in% xTT_events & row$Team == team_possessing}) {
+        #if the same team possesses the puck as the prior event, the possession is continuing
+        #so just add and do nothing.
+        possession_df <- possession_df %>%
+          rbind(stoppage_interval[event, ])
+        else if ({row$Event %in% xTT_events & row$Team != team_possession}) {
+          #however, if it's a new team possessing the puck, then the previous possession ended.
+          #and we calculate xTT Chain based off that possession.
+          possession_df <- possession_df[0, ]
+          possession_df <- possession_df %>%
+            rbind(stoppage_interval)
+        }
+      }
+    }
+  }
+    
+}
