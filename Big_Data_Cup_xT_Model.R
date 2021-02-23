@@ -79,15 +79,12 @@ for (row in (1:nrow(scouting_dataset))) {
   }
 }
 
+coordcolumns = c('X.Coordinate','X.Coordinate.2','Y.Coordinate','Y.Coordinate.2')
+model_events[, coordcolumns] <- apply(model_events[, coordcolumns], 2, function(x) as.numeric(as.character(x)))
 #trying to make this work but unsure how to fix it
-model_events <- model_events %>% mutate_at(
-  vars(contains("Coordinate")), funs(as.numeric())
-)
-#should run the below 4 lines in 1
-model_events$X.Coordinate <- as.numeric(model_events$X.Coordinate)
-model_events$X.Coordinate.2 <- as.numeric(model_events$X.Coordinate.2)
-model_events$Y.Coordinate <- as.numeric(model_events$Y.Coordinate)
-model_events$Y.Coordinate.2 <- as.numeric(model_events$Y.Coordinate.2)
+#model_events <- model_events %>% mutate_at(
+  #vars(contains("Coordinate")), funs(as.numeric())
+#)
 
 
 
