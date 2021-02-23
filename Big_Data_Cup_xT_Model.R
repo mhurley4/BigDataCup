@@ -105,7 +105,7 @@ model_events <- model_events %>% mutate(
 model_events <- model_events %>% mutate(
   Bin = ifelse(
     Rounded.X.Location > 0 & Rounded.Y.Location > 0, 
-    ((17 * model_events$Rounded.X.Location) + model_events$Rounded.Y.Location),
+    ((17 * Rounded.X.Location) + Rounded.Y.Location),
     ifelse(
       Rounded.X.Location > 0 & Rounded.Y.Location == 0, 
       (Rounded.X.Location + (17 * Rounded.X.Location)),
@@ -487,6 +487,18 @@ xTT_plotting <- xTT_plotting %>%
     Approx.Y.Location = Approx.Y.Location - 40
   )
 
+
+upperlimit <- 0.33
+lowerlimit <- -0.035
+for (row in (1:nrow(xTT_plotting))) {
+  xTT_plotting <- xTT_plotting %>% mutate(xTT5 = ifelse((xTT5 > upperlimit), (upperlimit), (xTT5)), xTT5 = ifelse((xTT5 < lowerlimit),(lowerlimit),(xTT5)))
+}
+#sets limits of colormap
+
+color1 = "blue" # low color
+color2 = "red" # high color
+#some possible colors: turquoise, blue, mediumblue, red, sienna1
+
 more_iter_viz <-
   nhl_rink_plot()+ 
   theme_void()+
@@ -497,12 +509,13 @@ more_iter_viz <-
   theme(legend.position = "right",
         plot.title = element_text(hjust = 0.5), 
         plot.caption = element_text(hjust = 0.5, face = "italic"))+
-  scale_fill_gradient2(low = "blue", high = "red", mid = "purple")+
+  scale_fill_gradient(low = color1, high = color2)+
   labs(x = "", y = "", title = "OHL Expected Total Threat (xTT)",
        fill = "xTT of Zone",
-       caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
+       caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes, color1/color2") #can delete colors from caption later
 
 more_iter_viz
+
 #Majority of regions are positive or (barely) negative, with a few zeroes.
 #Concentration in o-zone is in slot, with the majority of the d-zone being negative.
 
