@@ -79,8 +79,10 @@ for (row in (1:nrow(scouting_dataset))) {
   }
 }
 
+#convert the coordinate data to numeric type
 coordcolumns = c('X.Coordinate','X.Coordinate.2','Y.Coordinate','Y.Coordinate.2')
 model_events[, coordcolumns] <- apply(model_events[, coordcolumns], 2, function(x) as.numeric(as.character(x)))
+#left the below in as comments in case you want to try to get it to work
 #trying to make this work but unsure how to fix it
 #model_events <- model_events %>% mutate_at(
   #vars(contains("Coordinate")), funs(as.numeric())
