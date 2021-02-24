@@ -525,10 +525,13 @@ more_iter_viz
 #Majority of regions are positive or (barely) negative, with a few zeroes.
 #Concentration in o-zone is in slot, with the majority of the d-zone being negative.
 
-model1 = glm(goal/no goal ~ dist + angle, data=df, family = binomial(link=logit()))
+#model1 = glm(goal/no goal ~ dist + angle, data=df, family = binomial(link=logit()))
+
+
 
 
 #PART 7: Applying xTT
+
 full_scouting_dataset <- full_scouting_dataset %>%
   mutate(xTT = 0,
          xTT.2 = 0,
@@ -611,44 +614,85 @@ players_xTT <- plyr::join_all(list(total_xTT, plays_xTT, carries_xTT, takeaways_
 
 #PART 8: Calculating xTT Chain
 
+
+#Goal here is to sort by possession. But carries were appended to the end.
+#So this part works with dates and periods, etc; goal is to then use arrange()
+#to sort the scouting_dataset and then we can include carries in our possessions.
+sorted_scouting_dataset <- full_scouting_dataset %>%
+  mutate(game_date = lubridate::parse_date_time(game_date, "y-m-d"))
+sorted_scouting_dataset <- sorted_scouting_dataset %>%
+  separate(Clock, c("minutes_period", "seconds_period", "split_seconds_period"))
+sorted_scouting_dataset <- sorted_scouting_dataset %>%
+  mutate(minutes_period = as.numeric(minutes_period),
+         seconds_period = as.numeric(seconds_period),
+         split_seconds_period = as.numeric(split_seconds_period))
+sorted_scouting_dataset <- sorted_scouting_dataset %>%
+  select(-split_seconds_period)
+
+sorted_scouting_dataset <- sorted_scouting_dataset %>%
+  mutate(xTT.Change = ifelse(
+    (Event %in% c("Play", "Carry")), (xTT.2 - xTT),
+    ifelse((Event == "Failed Play"), -(xTT.2 + xTT), 
+           ifelse((Event == "Incomplete Play"), -xTT, 
+                  ifelse((Event %in% c("Takeaway", "Puck Recovery")), xTT, 0))
+    )
+  )
+  )
+
+
+sorted_scouting_dataset <- sorted_scouting_dataset %>%
+  arrange(game_date, desc(Period), desc(minutes_period), desc(seconds_period))
+
+sorted_scouting_dataset <- sorted_scouting_dataset %>%
+  select(Home.Team, Away.Team, Period, Home.Team.Skaters, Away.Team.Skaters,
+         Team, Player, Event, X.Coordinate, Y.Coordinate, Player.2, X.Coordinate.2, Y.Coordinate.2,
+         xTT, xTT.2, xTT.Change)
+#only select things we MIGHT need 
+
+
+
 #create 2 dataframes: one for all the events between every stoppage
-stoppage_interval <- tibble(colnames(full_scouting_dataset))
+stoppage_interval <- tibble(sorted_scouting_dataset)
+stoppage_interval <- stoppage_interval[0, ]
 #and then one for each possession that happens between that stoppage
-possession_df <- tibble(colnames(full_scouting_dataset))
+possession_df <- tibble(sorted_scouting_dataset)
+possession_df <- possession_df[0, ]
 #and delineate the events we're going to assign value to
-xTT_events <- c("Play", "Failed Play", "Carry", "Takeaway")
+xTT_events <- c("Play", "Failed Play", "Carry", "Takeaway", "Incomplete Play", "Puck Recovery")
 
 
-for (event in 1:nrow(full_scouting_dataset)) {
-  if ({(event$Event == "Faceoff Win") & nrow(stoppage_interval) == 0}) {
-    #all intervals begin with a faceoff win.
+
+
+for (event in c(1:12)) { #eventually this will be 1:nrow(sorted_scouting_dataset), just testing for now
+  if ({(sorted_scouting_dataset[[event, "Event"]] == "Faceoff Win") & nrow(stoppage_interval) == 0}) {
+    #all stoppage intervals begin with a faceoff win.
     stoppage_interval <- stoppage_interval %>%
-      rbind(full_scouting_dataset[event, ])
-  } else if ({event$Event != "Faceoff Win" & nrow(stoppage_interval) > 0}) {
+      rbind(sorted_scouting_dataset[event, ])
+  } else if ({sorted_scouting_dataset[[event, "Event"]] != "Faceoff Win" & nrow(stoppage_interval) > 0}) {
     stoppage_interval <- stoppage_interval %>%
-      rbind(full_scouting_dataset[event, ])
+      rbind(sorted_scouting_dataset[event, ])
     #if the event isn't a faceoff win, then append the event, as it happens
     #between two faceoff wins.
-  } else if ({event$Event == "Faceoff Win" & nrow(stoppage_interval > 0)}) {
+  } else if ({sorted_scouting_dataset[[event, "Event"]] == "Faceoff Win" & nrow(stoppage_interval > 0)}) {
     #now, if the event IS a faceoff win, then the previous interval has concluded. then
-    #we can subset it into possessions.
+    #we can subset the interval into possessions.
     team_possessing <- stoppage_interval[[1, "Team"]]
     for (row in 2:(nrow(stoppage_interval) - 1)) {
       #excluding the first and last rows, cause we know they're faceoff wins
-      if ({row$Event %in% xTT_events & row$Team == team_possessing}) {
+      if ({sorted_scouting_dataset[[row, "Event"]] %in% xTT_events & stoppage_interval[[row, "Team"]] == team_possessing}) {
         #if the same team possesses the puck as the prior event, the possession is continuing
         #so just add and do nothing.
         possession_df <- possession_df %>%
           rbind(stoppage_interval[event, ])
-        else if ({row$Event %in% xTT_events & row$Team != team_possession}) {
+        } else if ({sorted_scouting_dataset[[row, "Event"]] %in% xTT_events & stoppage_interval[[row, "Team"]] != team_possessing}) {
           #however, if it's a new team possessing the puck, then the previous possession ended.
           #and we calculate xTT Chain based off that possession.
           possession_df <- possession_df[0, ]
           possession_df <- possession_df %>%
             rbind(stoppage_interval)
         }
-      }
     }
-  }
-    
+    stoppage_interval <- stoppage_interval[0, ]
+    }
 }
+
