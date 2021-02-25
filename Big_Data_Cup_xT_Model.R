@@ -679,40 +679,49 @@ players_xTT_chain <- players_xTT %>%
 #Repeat ad infinitum.
 
 
-for (event in c(1:27)) { #eventually this will be 1:nrow(sorted_scouting_dataset), just testing for now
+for (event in c(1:16)) { #eventually this will be 1:nrow(sorted_scouting_dataset), just testing for now
   if (sorted_scouting_dataset[[event, "Event"]] == "Faceoff Win") {
     #check if the event is a faceoff win. 
-    if (nrow(possession_df == 0)) {
-      #if there aren't any events in this dataframe, then it's the start of an interval.
+    if (nrow(possession_df) < 1) {
+      #if there aren't any events in the possession dataframe, then it's the start of an interval.
       #so set the team_possessing to the team that won the faceoff, and then keep going.
       team_possession <- sorted_scouting_dataset[[event, "Team"]]
-    } else if (nrow(possession_df > 0)) {
+    } else {
+      break
       #however, if there are events in the df, then it's the end of an interval, and we can iterate backwards through 
       #to determine the xTT of the possessions contained in there.
-      for (possession_event in 1:nrow(possession_df)) {
-        if (possession_df[[possession_event, "Team"]] == team_possessing) {
-          next()
-          #if the team that possesses the puck is the same as the team that
-          #previously possessed it, then we're good to keep moving.
-        } else {
-          #However, if the team possessing the puck is different, then a possession has ended.
-          #So we calculate our xTT Chain based off that.
-          #FINDING TEAM CONTRIBUTION
-          delt_xTT <- (possession_df[[possession_event, "xTT.2"]] - possession_df[[1, "xTT"]])
-          #finds the change in xTT from the first to the fina event of the possession. 
-          passing_players <- length(unique(possession_df$Player[1:possession_event]))
-          #finds the number of players that contributed to that possession
-          team_contrib <- (delt_xTT / passing_players)
+       for (possession_event in 1:nrow(possession_df)) {
+         if ({possession_df[[possession_event, "Team"]] == team_possession} & {possession_event < nrow(possession_df)}) {
+           next
+           #if the team that possesses the puck is the same as the team that
+           #previously possessed it, then we're good to keep moving.
+         } else {
+           #However, if the team possessing the puck is different, then a possession has ended.
+           #So we calculate our xTT Chain based off that.
+           #FINDING TEAM CONTRIBUTION
+           delt_xTT <- (possession_df[[possession_event, "xTT.2"]] - possession_df[[1, "xTT"]])
+           #finds the change in xTT from the first to the fina event of the possession. 
+           passing_players <- length(possession_df %>% distinct(Player[1:possession_event])$Player)
+           #finds the number of players that contributed to that possession
+           team_contrib <- (delt_xTT / passing_players)
+           # possession_df <- possession_df %>%
+           #   select(Team, Player, xTT.Change) %>%
+           #   group_by(Team, Player) %>%
+           #   summarise(Personal.xTT = sum(xTT.Change),
+           #   Team.xTT.Chain = delt_xTT / passing_players) %>%
+           #   mutate(xTT.Chain = (Personal.xTT + Team.xTT.Chain) * 0.5)
+           # players_xTT_chain <- left_join(players_xTT_chain, possession_df)
           
         }
       }
     }
-  } else if (sorted_scouting_dataset[[event, "Event"]] %in% xTT_events){
+  } else if({sorted_scouting_dataset[[event, "Event"]] %in% xTT_events}){
+    #so, if it's not a faceoff win, and it's an event we assign value to, then we add it to the possession dataframe.
     possession_df <- possession_df %>%
       rbind(sorted_scouting_dataset[event, ])
-  } else if({sorted_scouting_dataset[[event, "Event"]] %nin% xTT_events & sorted_scouting_dataset[[event, "Event"]] != "Faceoff Win"}){
-    #if it's not an event we assign value to (i.e. shots and goals), we keep moving.
-    next()
+  } else {
+    #if it's not an event we assign value to (i.e. shots and goals) or a faceoff win, we keep moving.
+    next
   }
 }
 
