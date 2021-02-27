@@ -741,6 +741,126 @@ find_possession_value <- function(possession, players_xTT_chain) {
   }
 }
 
+
+
+
+
+
+#ATTEMPT 2: JUST USING TEAMS
+
+#QUICK RESET
+players_xTT_chain <- players_xTT %>%
+  select(Team, Player) %>%
+  mutate(Personal.xTT = 0,
+         Team.xTT.Chain = 0,
+         xTT.Chain = 0)
+
+
+for (event in 1:nrow(sorted_scouting_dataset)) {
+  #BASE CASE--assigning the first value
+  if (event == 1) {
+    team_with_possession <- sorted_scouting_dataset[[1, "Team"]]
+    #Start by assigning the team with possession to the one who wins the first faceoff.
+    previous_possession_end <- 1
+    
+  #WHEN TO SKIP EVENTS: ANYTHING THAT'S NOT 5V5  
+  } else if ({sorted_scouting_dataset[[event, "Home.Team.Skaters"]] != 5 |
+      sorted_scouting_dataset[[event, "Away.Team.Skaters"]] != 5}) {
+    team_with_possession <- sorted_scouting_dataset[[event, "Team"]]
+    next()
+    #We don't care about anything that's not 5v5 for now, so just keep on rolling.
+    #However, we do track which team has possession, because it'll become relevant once
+    #the penalty is expired, since possessions can carry over past the end
+    #of a penalty.
+    
+  #WHEN POSSESSIONS ARE GUARANTEED TO END: STOPPAGES (PENALTIES & FACEOFFS)
+  } else if (sorted_scouting_dataset[[event, "Event"]] == "Penalty Taken"){
+    #Penalties automatically mark the end of a possession.
+    #So we find the possession's value.
+    if ((previous_possession_end - (event - 1)) > 0) {
+      #Checking if the possession lasts longer than one event.
+      possession <- sorted_scouting_dataset[previous_possession_end:(event - 1), ]
+      possession <- possession %>%
+        subset(Event %in% xTT_events)
+      
+      #FIND POSSESSION VALUE SECTION
+      
+      previous_possession_end <- event
+      #The previous possession ends with the penalty.
+      #We don't worry about the team who's got possession; it'll be tracked, but it won't
+      #become relevant until the penalty expires.
+      
+    } else if (previous_possession_end - (event - 1) == 0) {
+      #If the possession only lasted one event,
+      #then the xTT Chain of that possession is just that player's personal
+      #contribution.
+      
+      #ASSIGN PERSONAL CONTRIBUTION 
+      
+      previous_possession_end <- event
+      #The previous possession ends with the penalty.
+      #We don't worry about the team who's got possession; it'll be tracked, but it won't
+      #become relevant until the penalty expires.
+    }
+  }  else if (sorted_scouting_dataset[[event, "Event"]] == "Faceoff Win") {
+    #If the event is a faceoff win 
+    #then a possession is guaranteed to have ended.
+    if ((previous_possession_end - (event - 1)) > 0) {
+      possession <- sorted_scouting_dataset[previous_possession_end:(event - 1), ]
+      possession <- possession %>%
+        subset(Event %in% xTT_events)
+      
+      #FIND POSSESSION VALUE SECTION
+      
+      team_with_possession <- sorted_scouting_dataset[[event, "Team"]]
+      #same ideas here
+      previous_possession_end <- event
+    } else if (previous_possession_end - (event - 1) == 0) {
+      #If the possession only lasted one event,
+      #then the xTT Chain of that possession is just that player's personal
+      #contribution.
+      
+      #ASSIGN PERSONAL CONTRIBUTION 
+      
+    }
+  #WHEN POSSESSIONS END BETWEEN STOPPAGES  
+  } else if ({sorted_scouting_dataset[[event, "Team"]] != team_with_possession & 
+      sorted_scouting_dataset[[event, "Event"]] != "Faceoff Win"}){
+    
+    #if the team changes between faceoffs, then it's the end of a possession.
+    if ((previous_possession_end - (event - 1)) > 0) {
+      #Checking if the possession lasts longer than one event.
+      possession <- sorted_scouting_dataset[previous_possession_end:(event - 1), ]
+      possession <- possession %>%
+        subset(Event %in% xTT_events)
+      
+      #FIND POSSESSION VALUE SECTION
+      
+      team_with_possession <- sorted_scouting_dataset[[event, "Team"]]
+      #Assign the team with possession to the one who currently does.
+      previous_possession_end <- event
+      #And note that the previous possession ends here.
+      
+    } else if (previous_possession_end - (event - 1) == 0) {
+      #If the possession only lasted one event,
+      #then the xTT Chain of that possession is just that player's personal
+      #contribution.
+      
+      #ASSIGN PERSONAL CONTRIBUTION 
+      
+      team_with_possession <- sorted_scouting_dataset[[event, "Team"]]
+      #Assign the team with possession to the one who currently does.
+      previous_possession_end <- event
+      #And note that the previous possession ends here.
+    }
+  }
+}
+
+
+
+
+
+
 #QUICK RESETS
 players_xTT_chain <- players_xTT %>%
   select(Team, Player) %>%
@@ -762,191 +882,133 @@ for (event in 1:nrow(sorted_scouting_dataset)) { #eventually this will be 1:nrow
     #Faceoff wins mark the beginning and end of intervals
     #and we don't care about other states for now.
     
-     if (nrow(possession_df) > 1){
-       #if the event is a faceoff and happens after more than one event is in the df, it's the end of an interval.
-       #and so we then iterate backwards through the interval
-       #to determine the xTT of the possessions contained in there.
-       team_possession <- possession_df[[1, "Team"]]
-       #Setting the team with INITIAL possession.
-       possession_start <- 1
-       #the possession starts with the first event in it. Now to iterate through.
-       
-       
-        for (possession_event in (1:nrow(possession_df))) {
-          if ({possession_df[[possession_event, "Team"]] == team_possession} & {possession_event < nrow(possession_df)}){
-            next()
-            #So, if the team possessing the puck is the same as the team originally with it and the df isn't done, we're good.
-            #Thus, we go to the next event.
-          } else if ({possession_df[[possession_event, "Team"]] != team_possession} & {possession_event < nrow(possession_df)}) {
-            print(paste("Partial possession stops at event", event))
-            #If the team possessing the puck is different and we're not through the df, then a possession has ended.
-            starting_event <- (ifelse((possession_start > 1), possession_start, 1))
-            #The starting event of the possession.
-            ending_event <- possession_event
-            #Find the event the possession ends with, and use that to define a possession
-            
-            possession <- possession_df[starting_event:ending_event, ]
-            
-            ###FINDING POSSESSION VALUE###
-            delt_xTT <- (possession[[nrow(possession), "xTT.2"]] - 
-                           possession[[1, "xTT"]])
-            #finds the change in xTT from the previous possession's ending to the final event of the possession. 
-            passing_players_df <- possession %>% 
-              distinct(Player)
-            passing_players <- length(passing_players_df$Player)
-            #finds the number of players that contributed to that possession
-            team_contrib <- (delt_xTT / passing_players)
-            #finds the team contribution based on that
+    if (nrow(possession_df) > 1){
+      #if the event is a faceoff and happens after more than one event is in the df, it's the end of an interval.
+      #and so we then iterate backwards through the interval
+      #to determine the xTT of the possessions contained in there.
+      team_possession <- possession_df[[1, "Team"]]
+      #Setting the team with INITIAL possession.
+      possession_start <- 1
+      #the possession starts with the first event in it. Now to iterate through.
       
-            possession_xTT <- possession %>%
-              select(Team, Player, xTT.Change) %>%
-              group_by(Team, Player) %>%
-              summarise(Personal.xTT = sum(xTT.Change),
-                        Team.xTT.Chain = delt_xTT / passing_players) %>%
-              mutate(xTT.Chain = (Personal.xTT + Team.xTT.Chain) * 0.5)
-            
-            for (each_player in 1:nrow(possession_xTT)) {
-              players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Personal.xTT"]] = (
-                players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Personal.xTT"]] + 
-                  possession_xTT[[each_player, "Personal.xTT"]])
-              players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Team.xTT.Chain"]] = (
-                players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Team.xTT.Chain"]] +
-                  possession_xTT[[each_player, "Team.xTT.Chain"]])
-              players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "xTT.Chain"]] = (
-                players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "xTT.Chain"]] + 
-                  possession_xTT[[each_player, "xTT.Chain"]])
-            }
-            ###END FINDING POSSESSION VALUE###
-            
-            ###EVERYTHING ABOVE THIS WORKS###
-            
-            #FIX THESE NEXT FEW LINES
-            #Need to do: assign team_possessing to the other team.
-            #Assign possession_start to the *next* event. 
-            #Just gotta slice the vectors right.
-            possession_start <- possession_event
-            team_possession <- sorted_scouting_dataset[[event, "Team"]]
-            #Then, change the team with possession to the one who currently does.
-            
-            
-            #And note that the next possession starts here.
-            } else if (possession_event == nrow(possession_df)) {
-              print(paste("Full possession stops at event", event))
-              #If a possession is the entirety of the interval, then we do the same calculations, 
-              #except adjusted a little bit cause now they're easier.
-              
-              
-              ###FINDING POSSESSION VALUE###
-              delt_xTT <- (possession_df[[nrow(possession_df), "xTT.2"]] - 
-                             possession_df[[1, "xTT"]])
-              #finds the change in xTT from the previous possession's ending to the final event of the possession. 
-              passing_players_df <- possession_df %>% 
-                distinct(Player)
-              passing_players <- length(passing_players_df$Player)
-              #finds the number of players that contributed to that possession
-              team_contrib <- (delt_xTT / passing_players)
-              #finds the team contribution based on that
-              
-              possession_xTT <- possession_df %>%
-                select(Team, Player, xTT.Change) %>%
-                group_by(Team, Player) %>%
-                summarise(Personal.xTT = sum(xTT.Change),
-                          Team.xTT.Chain = delt_xTT / passing_players) %>%
-                mutate(xTT.Chain = (Personal.xTT + Team.xTT.Chain) * 0.5)
-              
-              for (each_player in 1:nrow(possession_xTT)) {
-                players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Personal.xTT"]] = (
-                  players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Personal.xTT"]] + 
-                    possession_xTT[[each_player, "Personal.xTT"]])
-                players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Team.xTT.Chain"]] = (
-                  players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Team.xTT.Chain"]] +
-                    possession_xTT[[each_player, "Team.xTT.Chain"]])
-                players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "xTT.Chain"]] = (
-                  players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "xTT.Chain"]] + 
-                    possession_xTT[[each_player, "xTT.Chain"]])
-              }
-              ###END FINDING POSSESSION VALUE###
-              
-              #EVERYTHING ABOVE THIS WORKS.
-              #FIX THESE NEXT FEW LINES.
-              
-              #This is the end of the interval between faceoffs. So we reset stuff.
-              #do we even need anything, in that case?
-              team_possession <- sorted_scouting_dataset[[event, "Team"]]
-              possession_start <- 1
-            }
+      
+      for (possession_event in (1:nrow(possession_df))) {
+        if ({possession_df[[possession_event, "Team"]] == team_possession} & {possession_event < nrow(possession_df)}){
+          next()
+          #So, if the team possessing the puck is the same as the team originally with it and the df isn't done, we're good.
+          #Thus, we go to the next event.
+        } else if ({possession_df[[possession_event, "Team"]] != team_possession} & {possession_event < nrow(possession_df)}) {
+          print(paste("Partial possession stops at event", event))
+          #If the team possessing the puck is different and we're not through the df, then a possession has ended.
+          starting_event <- (ifelse((possession_start > 1), possession_start, 1))
+          #The starting event of the possession.
+          ending_event <- possession_event
+          #Find the event the possession ends with, and use that to define a possession
+          
+          possession <- possession_df[starting_event:ending_event, ]
+          
+          ###FINDING POSSESSION VALUE###
+          delt_xTT <- (possession[[nrow(possession), "xTT.2"]] - 
+                         possession[[1, "xTT"]])
+          #finds the change in xTT from the previous possession's ending to the final event of the possession. 
+          passing_players_df <- possession %>% 
+            distinct(Player)
+          passing_players <- length(passing_players_df$Player)
+          #finds the number of players that contributed to that possession
+          team_contrib <- (delt_xTT / passing_players)
+          #finds the team contribution based on that
+          
+          possession_xTT <- possession %>%
+            select(Team, Player, xTT.Change) %>%
+            group_by(Team, Player) %>%
+            summarise(Personal.xTT = sum(xTT.Change),
+                      Team.xTT.Chain = delt_xTT / passing_players) %>%
+            mutate(xTT.Chain = (Personal.xTT + Team.xTT.Chain) * 0.5)
+          
+          for (each_player in 1:nrow(possession_xTT)) {
+            players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Personal.xTT"]] = (
+              players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Personal.xTT"]] + 
+                possession_xTT[[each_player, "Personal.xTT"]])
+            players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Team.xTT.Chain"]] = (
+              players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Team.xTT.Chain"]] +
+                possession_xTT[[each_player, "Team.xTT.Chain"]])
+            players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "xTT.Chain"]] = (
+              players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "xTT.Chain"]] + 
+                possession_xTT[[each_player, "xTT.Chain"]])
+          }
+          ###END FINDING POSSESSION VALUE###
+          
+          ###EVERYTHING ABOVE THIS WORKS###
+          
+          #FIX THESE NEXT FEW LINES
+          #Need to do: assign team_possessing to the other team.
+          #Assign possession_start to the *next* event. 
+          #Just gotta slice the vectors right.
+          possession_start <- possession_event
+          team_possession <- sorted_scouting_dataset[[event, "Team"]]
+          #Then, change the team with possession to the one who currently does.
+          
+          
+          #And note that the next possession starts here.
+        } else if (possession_event == nrow(possession_df)) {
+          print(paste("Full possession stops at event", event))
+          #If a possession is the entirety of the interval, then we do the same calculations, 
+          #except adjusted a little bit cause now they're easier.
+          
+          
+          ###FINDING POSSESSION VALUE###
+          delt_xTT <- (possession_df[[nrow(possession_df), "xTT.2"]] - 
+                         possession_df[[1, "xTT"]])
+          #finds the change in xTT from the previous possession's ending to the final event of the possession. 
+          passing_players_df <- possession_df %>% 
+            distinct(Player)
+          passing_players <- length(passing_players_df$Player)
+          #finds the number of players that contributed to that possession
+          team_contrib <- (delt_xTT / passing_players)
+          #finds the team contribution based on that
+          
+          possession_xTT <- possession_df %>%
+            select(Team, Player, xTT.Change) %>%
+            group_by(Team, Player) %>%
+            summarise(Personal.xTT = sum(xTT.Change),
+                      Team.xTT.Chain = delt_xTT / passing_players) %>%
+            mutate(xTT.Chain = (Personal.xTT + Team.xTT.Chain) * 0.5)
+          
+          for (each_player in 1:nrow(possession_xTT)) {
+            players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Personal.xTT"]] = (
+              players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Personal.xTT"]] + 
+                possession_xTT[[each_player, "Personal.xTT"]])
+            players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Team.xTT.Chain"]] = (
+              players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "Team.xTT.Chain"]] +
+                possession_xTT[[each_player, "Team.xTT.Chain"]])
+            players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "xTT.Chain"]] = (
+              players_xTT_chain[[(which(players_xTT_chain$Player == possession_xTT[[each_player, "Player"]])), "xTT.Chain"]] + 
+                possession_xTT[[each_player, "xTT.Chain"]])
+          }
+          ###END FINDING POSSESSION VALUE###
+          
+          #EVERYTHING ABOVE THIS WORKS.
+          #FIX THESE NEXT FEW LINES.
+          
+          #This is the end of the interval between faceoffs. So we reset stuff.
+          #do we even need anything, in that case?
+          team_possession <- sorted_scouting_dataset[[event, "Team"]]
+          possession_start <- 1
         }
-       possession_df <- possession_df[0, ]
-       #Overwrite the possession_df to be 0, because after a faceoff, the possession is donezo.
-     } 
-    } else if({sorted_scouting_dataset[[event, "Event"]] %in% xTT_events}) {
+      }
+      possession_df <- possession_df[0, ]
+      #Overwrite the possession_df to be 0, because after a faceoff, the possession is donezo.
+    } 
+  } else if({sorted_scouting_dataset[[event, "Event"]] %in% xTT_events}) {
     if ({sorted_scouting_dataset[[event, "Home.Team.Skaters"]] == as.character(5)} & 
         {sorted_scouting_dataset[[event, "Away.Team.Skaters"]] == as.character(5)})
       #so, if it's not a faceoff win, and it's an event we assign value to, then we add it to the possession dataframe.
       possession_df <- possession_df %>%
         rbind(sorted_scouting_dataset[event, ])
-    }
-}
-
-
-
-
-
-
-#ATTEMPT 2: JUST USING TEAMS
-players_xTT_chain <- players_xTT %>%
-  select(Team, Player) %>%
-  mutate(Personal.xTT = 0,
-         Team.xTT.Chain = 0,
-         xTT.Chain = 0)
-
-
-for (event in 1:nrow(sorted_scouting_dataset)) {
-  #BASE CASE--assigning the first value
-  if (event == 1) {
-    team_with_possession <- sorted_scouting_dataset[[1, "Team"]]
-    #Start by assigning the team with possession to the one who wins the first faceoff.
-    previous_possession_end <- 1
-  } else if ({sorted_scouting_dataset[[event, "Team"]] != team_with_possession & 
-      sorted_scouting_dataset[[event, "Event"]] != "Faceoff Win"}){
-    if ({sorted_scouting_dataset[[event, "Home.Team.Skaters"]] != 5 |
-        sorted_scouting_dataset[[event, "Away.Team.Skaters"]] != 5}) {
-      next()
-      #We don't care about anything that's not 5v5 for now, so just keep on rolling.
-    }
-    #if the team changes between faceoffs, then it's the end of a possession.
-    possession <- sorted_scouting_dataset[previous_possession_end:(event - 1), ]
-    possession <- possession %>%
-      subset(Event %in% xTT_events)
-
-    find_possession_value(possession, players_xTT_chain)
-    
-    team_with_possession <- sorted_scouting_dataset[[event, "Team"]]
-    #Change the team with current possession
-    previous_possession_end <- event
-    #Note that the prior possession ended here. 
-    
-  } else if (sorted_scouting_dataset[[event, "Event"]] == "Faceoff Win") {
-    if ({sorted_scouting_dataset[[event, "Home.Team.Skaters"]] != 5 |
-        sorted_scouting_dataset[[event, "Away.Team.Skaters"]] != 5}) {
-      next()
-      #We don't care about anything that's not 5v5 for now, so just keep on rolling.
-    }
-    #If the event is a faceoff win or a penalty is taken, 
-    #then a possession is guaranteed to have ended.
-    possession <- sorted_scouting_dataset[previous_possession_end:(event - 1), ]
-    possession <- possession %>%
-      subset(Event %in% xTT_events)
-    
-    #FIND POSSESSION VALUE SECTION
-    find_possession_value(possession, players_xTT_chain)
-    ###END FINDING POSSESSION VALUE SECTION###
-    
-    team_with_possession <- sorted_scouting_dataset[[event, "Team"]]
-    #same ideas here
-    previous_possession_end <- event
-  } else if (sorted_scouting_dataset[[event, "Event"]] == "Penalty Taken"){
-    next()
   }
 }
+
+
+
+
 
