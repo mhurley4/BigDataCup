@@ -45,7 +45,7 @@ for (row in (1:nrow(full_scouting_dataset))) {
               full_scouting_dataset[row, ]$Period, full_scouting_dataset[row, ]$Clock,
               full_scouting_dataset[row, ]$Home.Team.Skaters, full_scouting_dataset[row, ]$Away.Team.Skaters, 
               full_scouting_dataset[row, ]$Home.Team.Goals, full_scouting_dataset[row, ]$Away.Team.Goals, full_scouting_dataset[row, ]$Team,
-              full_scouting_dataset[row, ]$Player, "Carry", 
+              full_scouting_dataset[row, ]$Player.2, "Carry", 
               full_scouting_dataset[row, ]$X.Coordinate.2, full_scouting_dataset[row, ]$Y.Coordinate.2,
               "", "", "", "", "", full_scouting_dataset[(row + 1), ]$X.Coordinate, full_scouting_dataset[(row + 1), ]$Y.Coordinate)
       )
@@ -733,6 +733,8 @@ passing_players_df <- passing_players_df[0, ]
 starting_event <- 1
 ending_event <- 1
 
+#ATTEMPT 1: FACEOFFS AND SUCH
+
 for (event in 1:nrow(sorted_scouting_dataset)) { #eventually this will be 1:nrow(sorted_scouting_dataset), just testing for now
   if (sorted_scouting_dataset[[event, "Event"]] == "Faceoff Win" &
       {sorted_scouting_dataset[[event, "Home.Team.Skaters"]] == 5 & 
@@ -865,5 +867,54 @@ for (event in 1:nrow(sorted_scouting_dataset)) { #eventually this will be 1:nrow
       possession_df <- possession_df %>%
         rbind(sorted_scouting_dataset[event, ])
     }
+}
+
+
+
+
+
+
+#ATTEMPT 2: JUST USING TEAMS
+
+for (event in 1:nrow(sorted_scouting_dataset)) {
+  if (event == 1) {
+    team_with_possession <- sorted_scouting_dataset[[1, "Team"]]
+    #Start by assigning the team with possession to the one who wins the first faceoff.
+    previous_possession_end <- 1
+    #And note that the previous possession ended at a given event
+  }
+  
+  
+  if ({sorted_scouting_dataset[[event, "Team"]] != team_with_possession & 
+      sorted_scouting_dataset[[event, "Event"]] != "Faceoff Win"}){
+    if ({sorted_scouting_dataset[[event, "Home.Team.Skaters"]] != 5 |
+        sorted_scouting_dataset[[event, "Away.Team.Skaters"]] != 5}) {
+      next()
+      #We don't care about 5v5 for now, so just keep on rolling.
+    }
+    #if the team changes between faceoffs, then it's the end of a possession.
+    possession <- sorted_scouting_dataset[previous_possession_end:event, ]
+    possession <- possession %>%
+      subset(Event %in% xTT_events)
+    
+    #FIND POSSESSION VALUE SECTION
+    
+    team_with_possession <- sorted_scouting_dataset[[event, "Team"]]
+    #Change the team with current possession
+    previous_possession_end <- event
+    #Note that the prior possession ended here. 
+    
+  } else if (sorted_scouting_dataset[[event, "Event"]] == "Faceoff Win") {
+    #If the event is a faceoff win, then a possession is guaranteed to have ended.
+    possession <- sorted_scouting_dataset[[previous_possession_end:event, ]]
+    possession <- possession %>%
+      subset(Event %in% xTT_events)
+    
+    #FIND POSSESSION VALUE
+    
+    team_with_possession <- sorted_scouting_dataset[[event, "Team"]]
+    previous_possession_end <- event
+    
+  }
 }
 
