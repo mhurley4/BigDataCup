@@ -903,7 +903,12 @@ for (event in 1:nrow(sorted_scouting_dataset)) {
   }
 }
 
-#Finding number of GP per team to adjust to per-game xTT Chain values.
+
+
+
+#PART 9: RESULTS OF xTT CHAIN
+#Finding number of GP per team to adjust to per-game xTT Chain values
+#to somewhat normalize our results.
 
 teams_in_games <- full_scouting_dataset %>%
   distinct(game_date, .keep_all = TRUE) %>%
@@ -958,7 +963,17 @@ players_xTT_chain <- players_xTT_chain %>%
          Normalized.xTT.Chain = (xTT.Chain / GP))
 
 larger_sampled_chain <- players_xTT_chain %>%
-  subset(GP > 1)
+  subset(GP > 1) %>%
+  select(Team, Player, Normalized.Personal, Normalized.Team, Normalized.xTT.Chain)
+
+top_10 <- larger_sampled_chain[1:10, ]
+write.csv(top_10, file = "top_10_players.csv")
+  
+
+#larger_sampled_chain restricts to players who played more than 1 game
+#with the idea that it's a small enough sample size and we can't
+#draw enough conclusions from any 1 game. 40 is hard enough, but 2 is the
+#best we can do.
   
 
 
