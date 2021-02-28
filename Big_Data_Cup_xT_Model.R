@@ -1,6 +1,6 @@
 #Big Data Cup xTT Model
 #Avery Ellis and Matt Hurley
-#2/22/2021
+#2/27/2021
 
 
 
@@ -54,7 +54,6 @@ for (row in (1:nrow(full_scouting_dataset))) {
 
 #One more thing we gotta make based on data inferences: failed passes.
 #Makes calculating the negative Markov transition matrix a lot easier.
-copy_data <- full_scouting_dataset
 
 for (row in (1:nrow(full_scouting_dataset))) {
   if ({full_scouting_dataset[row, ]$Event == "Incomplete Play"} &
@@ -572,6 +571,8 @@ takeaways <- valued_events %>%
   subset(Event == "Takeaway")
 failed_plays <- valued_events %>%
   subset(Event == "Failed Play")
+incomplete_plays <- valued_events %>%
+  subset(Event == "Incomplete Play")
 
 total_xTT <- valued_events %>%
   select(Team, Player, Event, xTT, xTT.2, xTT.Change) %>%
@@ -605,8 +606,15 @@ failed_plays_xTT <- failed_plays %>%
   summarise(xTT.From.Failed_Plays = sum(xTT.Change),
             Average.Failed_Play.xTT = xTT.From.Failed_Plays / length(Event),
   )
+incomplete_plays_xTT <- incomplete_plays %>%
+  select(Team, Player, Event, xTT, xTT.2, xTT.Change) %>%
+  group_by(Player, Team) %>%
+  summarise(xTT.From.Incomplete_Plays = sum(xTT.Change),
+            Average.Incomplete_Play.xTT = xTT.From.Incomplete_Plays / length(Event))
 
-players_xTT <- plyr::join_all(list(total_xTT, plays_xTT, carries_xTT, takeaways_xTT, failed_plays_xTT)) %>%
+
+players_xTT <- plyr::join_all(list(total_xTT, plays_xTT, carries_xTT, 
+                                   takeaways_xTT, failed_plays_xTT, incomplete_plays_xTT)) %>%
   replace(is.na(.), 0)
 #results in a df with all players in the dataset, and the xTT they generate, broken down by event type
 #and also with the averages
@@ -683,7 +691,7 @@ for (event in 1:nrow(sorted_scouting_dataset)) {
   }
 }
 sorted_scouting_dataset <- sorted_scouting_dataset[-double_faceoffs, ]
-#Gets rid of a few wonky double faceoffs that occur for some reason--probably penalties
+#Gets rid of a few  double faceoffs that occur for some reason--probably penalties
 #but unsure.
 
 #EDGE CASES--weird points where the carries/failed passes creation messed up
@@ -817,14 +825,11 @@ for (event in 1:nrow(sorted_scouting_dataset)) {
   #WHEN TO SKIP EVENTS: ANYTHING THAT'S NOT 5V5  
   } else if ({sorted_scouting_dataset[[event, "Home.Team.Skaters"]] != 5 |
       sorted_scouting_dataset[[event, "Away.Team.Skaters"]] != 5}) {
-    
     if (sorted_scouting_dataset[[event, "Team"]] != team_with_possession) {
       previous_possession_end <- event
     }
-    
     team_with_possession <- sorted_scouting_dataset[[event, "Team"]]
     next()
-    
     #We don't care about anything that's not 5v5 for now, so just keep on rolling.
     #However, we do track which team has possession and if a possession ended, 
     #because it'll become relevant once the penalty is expired, since possessions 
@@ -836,28 +841,22 @@ for (event in 1:nrow(sorted_scouting_dataset)) {
           sorted_scouting_dataset[[event, "Away.Team.Skaters"]] == 5} }) {
     #If the event is a faceoff win 
     #then a possession is guaranteed to have ended.
-    
     if (((event - 1) - previous_possession_end) > 0) {
       possession <- sorted_scouting_dataset[previous_possession_end:(event - 1), ]
       possession <- possession %>%
         subset(Event %in% xTT_events)
-      
       players_xTT_chain <- find_possession_value(possession, players_xTT_chain)
-      
       
     } else if (((event - 1) - previous_possession_end) == 0) {
       #If the possession only lasted one event,
       #then the xTT Chain of that possession is just that player's personal
       #contribution.
-      
       possession <- sorted_scouting_dataset[(event - 1), ]
       possession <- possession %>%
         subset(Event %in% xTT_events)
-      
       players_xTT_chain <- single_event_value(possession, players_xTT_chain) 
 
     }
-    
     team_with_possession <- sorted_scouting_dataset[[event, "Team"]]
     #Assign the team with possession to the one who currently has the puck.
     previous_possession_end <- event
@@ -867,25 +866,22 @@ for (event in 1:nrow(sorted_scouting_dataset)) {
   } else if ({sorted_scouting_dataset[[event, "Team"]] != team_with_possession & 
       sorted_scouting_dataset[[event, "Event"]] != "Faceoff Win"}){
     #if the team changes between faceoffs, then it's the end of a possession.
-    
     if (((event - 1) - previous_possession_end) > 0) {
       #Checking if the possession lasts longer than one event.
       possession <- sorted_scouting_dataset[previous_possession_end:(event - 1), ]
       possession <- possession %>%
         subset(Event %in% xTT_events)
-      
       players_xTT_chain <- find_possession_value(possession, players_xTT_chain)
       
     } else if (((event - 1) - previous_possession_end) == 0) {
       #If the possession only lasted one event,
       #then the xTT Chain of that possession is just that player's personal
       #contribution.
-      
       possession <- sorted_scouting_dataset[event, ]
       possession <- possession %>%
         subset(Event %in% xTT_events)
-      
       players_xTT_chain <- single_event_value(possession, players_xTT_chain)
+      
     } else {
       team_with_possession <- sorted_scouting_dataset[[event, "Team"]]
       #Assign the team with possession to the one who currently has the puck.
@@ -906,3 +902,18 @@ for (event in 1:nrow(sorted_scouting_dataset)) {
     players_xTT_chain <- find_possession_value(possession, players_xTT_chain)
   }
 }
+
+#Finding number of GP per team to adjust to per-game xTT Chain values.
+
+teams_in_games <- full_scouting_dataset %>%
+  distinct(game_date, .keep_all = TRUE) %>%
+  select(Home.Team, Away.Team)
+
+teams <- tibble(Team = c(union(unique(teams_in_games$Home.Team), unique(teams_in_games$Away.Team))),
+                GP = 0)
+
+for (team in 1:nrow(teams)) {
+  teams[[team, "GP"]] <- length(which({teams_in_games$Home.Team == teams[[team, "Team"]] | 
+      teams_in_games$Away.Team == teams[[team, "Team"]]}))
+}
+#Results in a df named "Teams" which lists the teams in the dataset and how many games 

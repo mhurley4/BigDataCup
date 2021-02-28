@@ -1,3 +1,7 @@
+#This code was sourced from @MrBillTran on Twitter.
+#The original code can be found at:
+#https://github.com/mrbilltran/the-win-column/blob/master/nhl_rink_plot.R
+
 library(tidyverse)
 library(ggforce)
 
