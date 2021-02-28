@@ -932,6 +932,10 @@ for (row in 1:nrow(teams)) {
 }
 names(team_xTT_data) <- col_names
 
+#convert the team data to numeric type
+coordcolumns = c('Personal.xTT','Team.xTT.Chain','xTT.Chain')
+team_xTT_data[, coordcolumns] <- apply(team_xTT_data[, coordcolumns], 2, function(x) as.numeric(as.character(x)))
+
 team_bar_chart <- ggplot(team_xTT_data, aes(x = Team, y = xTT.Chain)) +
   geom_col()
 team_bar_chart
