@@ -939,3 +939,19 @@ team_xTT_data[, coordcolumns] <- apply(team_xTT_data[, coordcolumns], 2, functio
 team_bar_chart <- ggplot(team_xTT_data, aes(x = Team, y = xTT.Chain)) +
   geom_col()
 team_bar_chart
+
+#Normalizing player data by games played.
+players_xTT_chain <- players_xTT_chain %>%
+  mutate(GP = 0) %>%
+  select(Team, Player, GP, Personal.xTT, Team.xTT.Chain, xTT.Chain)
+
+for (player in 1:nrow(players_xTT_chain)) {
+  player_team <- players_xTT_chain[[player, "Team"]]
+  team <- which(teams$Team == player_team)
+  players_xTT_chain[[player, "GP"]] <- teams[[team, "GP"]]
+}
+
+players_xTT_chain <- players_xTT_chain %>%
+  mutate(Normalized.Personal = (Personal.xTT / GP),
+         Normalized.Team = (Team.xTT.Chain / GP), 
+         Normalized.xTT.Chain = (xTT.Chain / GP))
