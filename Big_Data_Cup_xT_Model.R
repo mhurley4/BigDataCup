@@ -937,8 +937,11 @@ names(team_xTT_data) <- col_names
 coordcolumns = c('Personal.xTT','Team.xTT.Chain','xTT.Chain')
 team_xTT_data[, coordcolumns] <- apply(team_xTT_data[, coordcolumns], 2, function(x) as.numeric(as.character(x)))
 
-team_bar_chart <- ggplot(team_xTT_data, aes(x = Team, y = xTT.Chain)) +
-  geom_col()
+team_bar_chart <- ggplot(team_xTT_data, aes(reorder(Team, -xTT.Chain), xTT.Chain)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  xlab('Team') +
+  ylab('xTT Chain')
 team_bar_chart
 
 #Normalizing player data by games played.
