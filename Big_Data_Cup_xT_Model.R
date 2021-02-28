@@ -920,7 +920,7 @@ for (team in 1:nrow(teams)) {
 
 # Below creates df team_xTT_data with normalized team data
 team_xTT_data <- players_xTT_chain[0,]
-team_xTT_data <- team_xTT_data %>%
+team_xTT_data <- team_xTT_data %>% ungroup() %>%
   select(Team, Personal.xTT, Team.xTT.Chain, xTT.Chain)
 col_names <- names(team_xTT_data)
 team_df <- unique(players_xTT_chain[c("Team")])
@@ -956,3 +956,10 @@ players_xTT_chain <- players_xTT_chain %>%
   mutate(Normalized.Personal = (Personal.xTT / GP),
          Normalized.Team = (Team.xTT.Chain / GP), 
          Normalized.xTT.Chain = (xTT.Chain / GP))
+
+larger_sampled_chain <- players_xTT_chain %>%
+  subset(GP > 1)
+  
+
+
+
