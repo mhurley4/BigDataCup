@@ -917,3 +917,21 @@ for (team in 1:nrow(teams)) {
       teams_in_games$Away.Team == teams[[team, "Team"]]}))
 }
 #Results in a df named "Teams" which lists the teams in the dataset and how many games 
+
+# Below creates df team_xTT_data with normalized team data
+team_xTT_data <- players_xTT_chain[0,]
+team_xTT_data <- subset(team_xTT_data, select= -Player)
+col_names <- names(team_xTT_data)
+team_df <- unique(players_xTT_chain[c("Team")])
+for (row in 1:nrow(teams)) {
+  team_subset <- players_xTT_chain %>% subset({Team==as.character(teams[row, "Team"])})
+  team_xTT_data <- team_xTT_data %>% rbind(c(as.character(teams[row, "Team"]), 
+                                             sum(team_subset$Personal.xTT)/as.numeric(teams[row,"GP"]), 
+                                             sum(team_subset$Team.xTT.Chain)/as.numeric(teams[row,"GP"]), 
+                                             sum(team_subset$xTT.Chain)/as.numeric(teams[row,"GP"])))
+}
+names(team_xTT_data) <- col_names
+
+team_bar_chart <- ggplot(team_xTT_data, aes(x = Team, y = xTT.Chain)) +
+  geom_col()
+team_bar_chart
