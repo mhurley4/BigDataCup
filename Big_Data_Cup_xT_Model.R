@@ -920,7 +920,8 @@ for (team in 1:nrow(teams)) {
 
 # Below creates df team_xTT_data with normalized team data
 team_xTT_data <- players_xTT_chain[0,]
-team_xTT_data <- subset(team_xTT_data, select= -Player)
+team_xTT_data <- team_xTT_data %>%
+  select(Team, Personal.xTT, Team.xTT.Chain, xTT.Chain)
 col_names <- names(team_xTT_data)
 team_df <- unique(players_xTT_chain[c("Team")])
 for (row in 1:nrow(teams)) {
