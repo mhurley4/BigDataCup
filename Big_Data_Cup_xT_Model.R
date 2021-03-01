@@ -83,11 +83,6 @@ scouting_dataset <- full_scouting_dataset %>%
 #convert the coordinate data to numeric type
 coordcolumns = c('X.Coordinate','X.Coordinate.2','Y.Coordinate','Y.Coordinate.2')
 full_scouting_dataset[, coordcolumns] <- apply(full_scouting_dataset[, coordcolumns], 2, function(x) as.numeric(as.character(x)))
-#left the below in as comments in case you want to try to get it to work
-#trying to make this work but unsure how to fix it
-#model_events <- model_events %>% mutate_at(
-  #vars(contains("Coordinate")), funs(as.numeric())
-#)
 
 
 
@@ -348,7 +343,7 @@ for (bin in 1:nrow(xTT)) {
       #O-Zone loss becomes D-Zone, and vice versa.
       mutate(Approx.Flipped.X = as.numeric(Flipped.X.Coordinate %/% 5),
              Approx.Flipped.Y = as.numeric(Flipped.Y.Coordinate %/% 5))%>%
-      #These mutates() basically just recalculate the bin you'd be in
+      #These mutate() calls basically just recalculate the bin you'd be in
       #if you were to take the puck away in a bin.
       mutate(Flipped.Bin = ifelse(
                  Approx.Flipped.X > 0 & Approx.Flipped.Y > 0, 
@@ -380,7 +375,8 @@ for (bin in 1:nrow(xTT)) {
 
 
 #PART 6: MORE ITERATIONS
-#Singh used 5 iterations--we're gonna try that and see if our model converges to our liking.
+#Singh & Forstner both used 5 iterations.
+#We're gonna try that and see if our model converges to our liking.
 xTT <- xTT %>%
   mutate(xTT3 = 0,
          xTT4 = 0,
@@ -388,8 +384,8 @@ xTT <- xTT %>%
 #adding in new columns to calculate each new iteration of xTT.
 
 #The majority of this loop is just copy-pasted from part 7.
-#So I've added small comments on the new stuff, and took out
-#the stuff I've already talked about.
+#So we've added small comments on the new stuff, and took out
+#the comments on stuff we've already talked about.
 for (iteration in 3:5) {
   for (col in colnames(xTT)) {
     if(str_sub(col, -1, -1) == as.character(iteration - 1)) {
@@ -504,7 +500,6 @@ xTT_plotting <- xTT_plotting %>%
 
 color1 = "blue" # low color
 color2 = "red" # high color
-#some possible colors: turquoise, blue, mediumblue, red, sienna1
 
 more_iter_viz <-
   nhl_rink_plot()+ 
@@ -529,7 +524,6 @@ ggsave("BigDataCup/xTT_heatmap.png")
 #Majority of regions are positive or (barely) negative, with a few zeroes.
 #Concentration in o-zone is in slot, with the majority of the d-zone being negative.
 
-#model1 = glm(goal/no goal ~ dist + angle, data=df, family = binomial(link=logit()))
 
 
 
@@ -563,8 +557,7 @@ valued_events <- full_scouting_dataset %>%
 #calculating the change in xTT from those values. 
 #Carries and Plays get you the pure change in xTT.
 #Failed Plays get you the sum of the xTT, flipped negative;
-#this is because the s
-#Takeaways give you the xTT where they occur.
+#Takeaways and Puck Recoveries give you the xTT where they occur.
 
 plays <- valued_events %>%
   subset(Event == "Play")
@@ -576,6 +569,8 @@ failed_plays <- valued_events %>%
   subset(Event == "Failed Play")
 incomplete_plays <- valued_events %>%
   subset(Event == "Incomplete Play")
+puck_recoveries <- valued_events %>%
+  subset(Event == "Puck Recovery")
 
 total_xTT <- valued_events %>%
   select(Team, Player, Event, xTT, xTT.2, xTT.Change) %>%
@@ -615,9 +610,16 @@ incomplete_plays_xTT <- incomplete_plays %>%
   summarise(xTT.From.Incomplete_Plays = sum(xTT.Change),
             Average.Incomplete_Play.xTT = xTT.From.Incomplete_Plays / length(Event))
 
+puck_recoveries_xTT <- puck_recoveries %>%
+  select(Team, Player, Event, xTT, xTT.2, xTT.Change) %>%
+  group_by(Player, Team) %>%
+  summarise(xTT.From.Puck_Recoveries = sum(xTT.Change),
+            Average.Puck_Recoveries.xTT = xTT.From.Puck_Recoveries / length(Event))
+
 
 players_xTT <- plyr::join_all(list(total_xTT, plays_xTT, carries_xTT, 
-                                   takeaways_xTT, failed_plays_xTT, incomplete_plays_xTT)) %>%
+                                   takeaways_xTT, failed_plays_xTT, incomplete_plays_xTT,
+                                   puck_recoveries_xTT)) %>%
   replace(is.na(.), 0)
 #results in a df with all players in the dataset, and the xTT they generate, broken down by event type
 #and also with the averages
@@ -628,7 +630,8 @@ players_xTT <- plyr::join_all(list(total_xTT, plays_xTT, carries_xTT,
 #PART 8: Calculating xTT Chain
 
 
-#Goal here is to sort by possession. But carries were appended to the end.
+#Goal here is to sort by possession. But carries and failed passes were appended to the end.
+#We need to get them into their correct positioning, within possessions.
 #So this part works with dates and periods, etc; goal is to then use arrange()
 #to sort the scouting_dataset and then we can include carries & failed passes in our possessions.
 sorted_scouting_dataset <- full_scouting_dataset %>%
@@ -809,14 +812,9 @@ single_event_value <- function(possession, players_xTT_chain) {
 }
 
 
-
-#QUICK RESET
-players_xTT_chain <- players_xTT %>%
-  select(Team, Player) %>%
-  mutate(Personal.xTT = 0,
-         Team.xTT.Chain = 0,
-         xTT.Chain = 0)
-
+#CALCULATING xTT CHAIN
+#This is a giant for loop, so we've tried to comment it well to make
+#everything pretty clear.
 
 for (event in 1:nrow(sorted_scouting_dataset)) {
   #BASE CASE--assigning the first value
@@ -924,7 +922,7 @@ for (team in 1:nrow(teams)) {
   teams[[team, "GP"]] <- length(which({teams_in_games$Home.Team == teams[[team, "Team"]] | 
       teams_in_games$Away.Team == teams[[team, "Team"]]}))
 }
-#Results in a df named "Teams" which lists the teams in the dataset and how many games 
+#Results in a df named "Teams" which lists the teams in the dataset and how many games they played.
 
 # Below creates df team_xTT_data with normalized team data
 team_xTT_data <- players_xTT_chain[0,]
@@ -967,6 +965,7 @@ larger_sampled_chain <- players_xTT_chain %>%
   arrange(desc(Normalized.xTT.Chain))
 
 top_10 <- larger_sampled_chain[1:10, ]
+#for our results: the top 10 players in terms of xTT Chain per game played.
 write.csv(top_10, file = "top_10_players.csv")
   
 
@@ -974,6 +973,7 @@ write.csv(top_10, file = "top_10_players.csv")
 #with the idea that it's a small enough sample size and we can't
 #draw enough conclusions from any 1 game. 40 is hard enough, but 2 is the
 #best we can do.
+
   
 mycolumns = c('Personal.xTT','Team.xTT.Chain','xTT.Chain','Normalized.Personal','Normalized.Team','Normalized.xTT.Chain')
 players_xTT_chain[, mycolumns] <- apply(players_xTT_chain[, mycolumns], 2, function(x) as.numeric(as.character(x)))
