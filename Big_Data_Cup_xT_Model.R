@@ -943,7 +943,7 @@ names(team_xTT_data) <- col_names
 
 #convert the team data to numeric type
 mycolumns = c('Personal.xTT','Team.xTT.Chain','xTT.Chain')
-team_xTT_data[, coordcolumns] <- apply(team_xTT_data[, coordcolumns], 2, function(x) as.numeric(as.character(x)))
+team_xTT_data[, mycolumns] <- apply(team_xTT_data[, mycolumns], 2, function(x) as.numeric(as.character(x)))
 
 #Normalizing player data by games played.
 players_xTT_chain <- players_xTT_chain %>%
@@ -963,7 +963,8 @@ players_xTT_chain <- players_xTT_chain %>%
 
 larger_sampled_chain <- players_xTT_chain %>%
   subset(GP > 1) %>%
-  select(Team, Player, Normalized.Personal, Normalized.Team, Normalized.xTT.Chain)
+  select(Team, Player, Normalized.Personal, Normalized.Team, Normalized.xTT.Chain) %>%
+  arrange(desc(Normalized.xTT.Chain))
 
 top_10 <- larger_sampled_chain[1:10, ]
 write.csv(top_10, file = "top_10_players.csv")
@@ -975,7 +976,7 @@ write.csv(top_10, file = "top_10_players.csv")
 #best we can do.
   
 mycolumns = c('Personal.xTT','Team.xTT.Chain','xTT.Chain','Normalized.Personal','Normalized.Team','Normalized.xTT.Chain')
-players_xTT_chain[, coordcolumns] <- apply(players_xTT_chain[, coordcolumns], 2, function(x) as.numeric(as.character(x)))
+players_xTT_chain[, mycolumns] <- apply(players_xTT_chain[, mycolumns], 2, function(x) as.numeric(as.character(x)))
 
 team_bar_chart <- ggplot(team_xTT_data, aes(reorder(Team, -xTT.Chain), xTT.Chain)) +
   geom_col() +
