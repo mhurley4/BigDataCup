@@ -939,15 +939,8 @@ for (row in 1:nrow(teams)) {
 names(team_xTT_data) <- col_names
 
 #convert the team data to numeric type
-coordcolumns = c('Personal.xTT','Team.xTT.Chain','xTT.Chain')
+mycolumns = c('Personal.xTT','Team.xTT.Chain','xTT.Chain')
 team_xTT_data[, coordcolumns] <- apply(team_xTT_data[, coordcolumns], 2, function(x) as.numeric(as.character(x)))
-
-team_bar_chart <- ggplot(team_xTT_data, aes(reorder(Team, -xTT.Chain), xTT.Chain)) +
-  geom_col() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  xlab('Team') +
-  ylab('xTT Chain')
-team_bar_chart
 
 #Normalizing player data by games played.
 players_xTT_chain <- players_xTT_chain %>%
@@ -978,6 +971,42 @@ write.csv(top_10, file = "top_10_players.csv")
 #draw enough conclusions from any 1 game. 40 is hard enough, but 2 is the
 #best we can do.
   
+mycolumns = c('Personal.xTT','Team.xTT.Chain','xTT.Chain','Normalized.Personal','Normalized.Team','Normalized.xTT.Chain')
+players_xTT_chain[, coordcolumns] <- apply(players_xTT_chain[, coordcolumns], 2, function(x) as.numeric(as.character(x)))
+
+team_bar_chart <- ggplot(team_xTT_data, aes(reorder(Team, -xTT.Chain), xTT.Chain)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  xlab('Team') +
+  ylab('xTT Chain')
+team_bar_chart
+
+player_scatter_plot <- ggplot(players_xTT_chain, aes(Normalized.Personal, Normalized.Team)) +
+  geom_point(shape=21, alpha=0.6, color='white', fill='red', size=1.25) +
+  xlab('Individual xTT') +
+  ylab('Team xTT') +
+  #stat_smooth(method = lm, se=FALSE, size=0.4) +
+  theme(aspect.ratio=0.95/1.7) +
+  coord_cartesian(xlim = c(-0.4, 1.3), ylim = c(-0.35, 0.6))
+player_scatter_plot
+#colour = factor(Team) (if you want teams as different colors, but looks messy)
+
+player_scatter_plot2 <- ggplot(players_xTT_chain, aes(Normalized.Personal, Normalized.xTT.Chain)) +
+  geom_point(shape=21, alpha=0.6, color='white', fill='red', size=1) +
+  xlab('Individual xTT') +
+  ylab('xTT Chain') +
+  stat_smooth(method = lm, se=FALSE, size=0.4) +
+  theme(aspect.ratio=1.25/1.8) +
+  coord_cartesian(xlim = c(-0.5, 1.3), ylim = c(-0.25, 1))
+player_scatter_plot2
+
+#Quick checks:
+sprintf("Half the total sum of personal and team: %f", 0.5*(sum(players_xTT_chain$Personal.xTT)+sum(players_xTT_chain$Team.xTT.Chain)))
+sprintf("Sum of xTT Chain: %f", sum(players_xTT_chain$xTT.Chain))
+sprintf("Half of the total sum of normalized personal and team: %f", 0.5*(sum(players_xTT_chain$Normalized.Personal)+sum(players_xTT_chain$Normalized.Team)))
+sprintf("Normalized sum of xTT Chain: %f", sum(players_xTT_chain$Normalized.xTT.Chain))
+
+
 
 
 
