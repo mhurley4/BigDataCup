@@ -522,6 +522,7 @@ more_iter_viz <-
        caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes") #can delete colors from caption later
 
 more_iter_viz
+ggsave("BigDataCup/xTT_heatmap.png")
 
 #Majority of regions are positive or (barely) negative, with a few zeroes.
 #Concentration in o-zone is in slot, with the majority of the d-zone being negative.
