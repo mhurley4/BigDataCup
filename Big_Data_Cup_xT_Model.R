@@ -989,6 +989,7 @@ player_scatter_plot <- ggplot(players_xTT_chain, aes(Normalized.Personal, Normal
   theme(aspect.ratio=0.95/1.7) +
   coord_cartesian(xlim = c(-0.4, 1.3), ylim = c(-0.35, 0.6))
 player_scatter_plot
+ggsave("BigDataCup/player_scatter_plot1.png")
 #colour = factor(Team) (if you want teams as different colors, but looks messy)
 
 player_scatter_plot2 <- ggplot(players_xTT_chain, aes(Normalized.Personal, Normalized.xTT.Chain)) +
@@ -999,6 +1000,7 @@ player_scatter_plot2 <- ggplot(players_xTT_chain, aes(Normalized.Personal, Norma
   theme(aspect.ratio=1.25/1.8) +
   coord_cartesian(xlim = c(-0.5, 1.3), ylim = c(-0.25, 1))
 player_scatter_plot2
+ggsave("BigDataCup/player_scatter_plot2.png")
 
 #Quick checks:
 sprintf("Half the total sum of personal and team: %f", 0.5*(sum(players_xTT_chain$Personal.xTT)+sum(players_xTT_chain$Team.xTT.Chain)))
