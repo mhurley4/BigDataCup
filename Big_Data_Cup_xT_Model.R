@@ -501,11 +501,16 @@ xTT_plotting <- xTT_plotting %>%
 color1 = "blue" # low color
 color2 = "red" # high color
 
+#geom_arc(aes(x0 = 72, y0 = 14.5, start = pi / 2, end = 0, r = 28)) + # Top-Right
+#geom_arc(aes(x0 = 72, y0 = -14.5, start = pi, end =  pi / 2, r = 28)) + # Bottom-Right
+#geom_arc(aes(x0 = -72, y0 = 14.5, start = - pi / 2, end = 0, r = 28)) + # Top-Left
+#geom_arc(aes(x0 = -72, y0 = -14.5, start = pi, end =  3 * pi / 2, r = 28))
+
 more_iter_viz <-
   nhl_rink_plot()+ 
   theme_void()+
   geom_tile(data = (xTT_plotting %>% filter(
-      Bin %nin% c(0, 1, 2, 14, 15, 16, 17, 18, 32, 33, 34, 50, 646, 662, 663, 664, 678, 679, 680, 681, 682, 694, 695, 696))), 
+      Bin %nin% c())), 
       aes(x = Approx.X.Location, y = Approx.Y.Location, fill = xTT5),
       alpha = 0.55)+
   theme(legend.position = "right",
@@ -516,7 +521,13 @@ more_iter_viz <-
   labs(x = "", y = "", title = "OHL Expected Total Threat (xTT)",
        subtitle = "< Defensive Zone \n Offensive Zone >",
        fill = "xTT of Zone",
-       caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes") #can delete colors from caption later
+       caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
+
+for (row in 1:nrow(xTT_plotting)) {
+  if (xTT_plotting[row,]$Approx.X.Location^2+xTT_plotting[row,]$Approx.Y.Location^2 > 784) {
+    more_iter_viz <- more_iter_viz + geom_point(aes(as.numeric(xTT_plotting[row,]$Approx.X.Location),as.numeric(xTT_plotting[row,]$Approx.Y.Location)))
+  }
+}
 
 more_iter_viz
 ggsave("BigDataCup/xTT_heatmap.png")
