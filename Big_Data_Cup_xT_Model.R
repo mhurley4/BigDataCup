@@ -515,9 +515,11 @@ more_iter_viz <-
       alpha = 0.55)+
   theme(legend.position = "right",
         plot.title = element_text(hjust = 0.5), 
-        plot.caption = element_text(hjust = 0.5, face = "italic"))+
+        plot.caption = element_text(hjust = 0.5, face = "italic"),
+        plot.subtitle = element_text(hjust = 0.5, face = "italic"))+
   scale_fill_gradient(low = color1, high = color2)+
   labs(x = "", y = "", title = "OHL Expected Total Threat (xTT)",
+       subtitle = "< Defensive Zone \n Offensive Zone >",
        fill = "xTT of Zone",
        caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes") #can delete colors from caption later
 
