@@ -1,12 +1,13 @@
 #Big Data Cup xTT Model
 #Avery Ellis and Matt Hurley
-#2/27/2021
+#3/5/2021
 
 
 
 
 #PART 1: SETUP
 
+library(lubridate)
 library(tidyverse)
 library(ggforce)
 '%nin%' <- Negate('%in%')
@@ -118,13 +119,13 @@ full_scouting_dataset <- full_scouting_dataset %>% mutate(
         Rounded.X.Location.2 == 0 & Rounded.Y.Location.2 > 0, Rounded.Y.Location.2, 0
       )))
   )
-#puts every event into a "bin" based on its location (697 possible bins, 0 being at (0,0) and 696 being at (200, 80) )
+#puts every event into a zone based on its location (697 possible zones, 0 being at (0,0) and 696 being at (200, 80) )
 
 
 
 
-#PART 3: BIN CONCENTRATIONS
-#Finding total events per bin and then plotting to visualize where things happen
+#PART 3: ZONE CONCENTRATIONS
+#Finding total events per zone.
 model_events <- full_scouting_dataset %>%
   subset({{Home.Team.Skaters == 5} & {Away.Team.Skaters == 5}})
 model_events <- model_events %>%
@@ -226,13 +227,13 @@ for (row in 1:nrow(xTT)) {
          (xTT[[row, "Negative.Events"]] = nrow(neg_df)),
          (xTT[[row, "Negative.Events"]] = 0))
 }
-#Just calculating the number of positive and negative events that happen in each bin
+#Just calculating the number of positive and negative events that happen in each zone
 
 xTT <- xTT %>%
   mutate_at(c("Positive.Events", "Negative.Events"),
             funs(lead), 
             n = 1)
-  #for some reason, the positive and negative events are put into the next bin.
+  #for some reason, the positive and negative events are put into the next zone
   #The mutate_at just shifts them up 1 to account for this
 
 #drop the NA values that result and replace them with 0
@@ -333,7 +334,7 @@ for (bin in 1:nrow(xTT)) {
     #basically all this block does is find the flipped x-location, 
     #adjusts it to the approximate coordinates,
     #and then makes the takeaways dataframe smaller,
-    #because they only happen in this bin,
+    #because they only happen in this zone,
     #so we only need the number that occur and the location they occur in
     neg_df_takeaways <- neg_df_takeaways %>%
       select(X.Coordinate, Y.Coordinate, Rounded.X.Location, Rounded.Y.Location, Bin) %>%
@@ -343,8 +344,8 @@ for (bin in 1:nrow(xTT)) {
       #O-Zone loss becomes D-Zone, and vice versa.
       mutate(Approx.Flipped.X = as.numeric(Flipped.X.Coordinate %/% 5),
              Approx.Flipped.Y = as.numeric(Flipped.Y.Coordinate %/% 5))%>%
-      #These mutate() calls basically just recalculate the bin you'd be in
-      #if you were to take the puck away in a bin.
+      #These mutate() calls basically just recalculate the zone you'd be in
+      #if you were to take the puck away in a zone
       mutate(Flipped.Bin = ifelse(
                  Approx.Flipped.X > 0 & Approx.Flipped.Y > 0, 
                  ((17 * Approx.Flipped.X) + Approx.Flipped.Y),
@@ -355,17 +356,17 @@ for (bin in 1:nrow(xTT)) {
                      Approx.Flipped.X == 0 & Approx.Flipped.Y > 0, 
                      Approx.Flipped.Y, 0
                    ))))
-    #The code for this is basically the same way the bins were
+    #The code for this is basically the same way the zones were
     #originally generated. Just small changes.
     takeaways_xTT <- (xTT[[neg_df_takeaways$Flipped.Bin[1], "xTT1"]] /
                         nrow(neg_df_takeaways))
-    #calculate the total xTT that comes from takeaways in this bin
+    #calculate the total xTT that comes from takeaways in this zone
     #weighted by the probability of losing the puck here.
   }
   xTT[bin, "xTT2"] <- xTT[bin, "xTT2"] -
     (xTT[bin, "Negative.Event.Probability"] * (failed_passes_xTT + takeaways_xTT))
-  #finally, add the xTT that comes from takeaways in this bin
-  #and failed passes to all other bins, multiply it by
+  #finally, add the xTT that comes from takeaways in this zone
+  #and failed passes to all other zones, multiply it by
   #the probability of a negative event occuring,
   #and subtract that all from our xTT figure, completing the second iteration
   #of our xTT!
@@ -376,7 +377,10 @@ for (bin in 1:nrow(xTT)) {
 
 #PART 6: MORE ITERATIONS
 #Singh & Forstner both used 5 iterations.
-#We're gonna try that and see if our model converges to our liking.
+#We found that our results had converged sufficiently.
+#But there is definitely value in looking at more or less iterations
+#to explore the contextual value of zones in shorter sequences.
+
 xTT <- xTT %>%
   mutate(xTT3 = 0,
          xTT4 = 0,
@@ -501,7 +505,7 @@ xTT_plotting <- xTT_plotting %>%
 color1 = "blue" # low color
 color2 = "red" # high color
 
-more_iter_viz <-
+xtt_heatmap <-
   nhl_rink_plot()+ 
   theme_void()+
   geom_tile(data = (xTT_plotting %>% filter(
@@ -516,14 +520,14 @@ more_iter_viz <-
   labs(x = "", y = "", title = "OHL Expected Total Threat (xTT)",
        subtitle = "< Defensive Zone \n Offensive Zone >",
        fill = "xTT of Zone",
-       caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes") #can delete colors from caption later
+       caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
 
-more_iter_viz
+
+#QUICK NOTE--the heatmap generated is not exactly the heatmap from the paper.
+#We filled in the whitespace from geom_tile with Photoshop, in the interest
+#of full disclosure.
+xtt_heatmap
 ggsave("BigDataCup/xTT_heatmap.png")
-
-#Majority of regions are positive or (barely) negative, with a few zeroes.
-#Concentration in o-zone is in slot, with the majority of the d-zone being negative.
-
 
 
 
@@ -622,7 +626,7 @@ players_xTT <- plyr::join_all(list(total_xTT, plays_xTT, carries_xTT,
                                    puck_recoveries_xTT)) %>%
   replace(is.na(.), 0)
 #results in a df with all players in the dataset, and the xTT they generate, broken down by event type
-#and also with the averages
+#and also with the averages per event type
 
 
 
@@ -697,7 +701,7 @@ for (event in 1:nrow(sorted_scouting_dataset)) {
   }
 }
 sorted_scouting_dataset <- sorted_scouting_dataset[-double_faceoffs, ]
-#Gets rid of a few  double faceoffs that occur for some reason--probably penalties
+#Gets rid of a few double faceoffs that occur for some reason--probably penalties
 #but unsure.
 
 #EDGE CASES--weird points where the carries/failed passes creation messed up
@@ -715,13 +719,17 @@ sorted_scouting_dataset <- sorted_scouting_dataset[c(1:80907, 80911, 80908, 8090
 sorted_scouting_dataset <- sorted_scouting_dataset[c(1:80897, 80901, 80898, 80899, 80900, 80902:nrow(sorted_scouting_dataset)), ]
 sorted_scouting_dataset <- sorted_scouting_dataset[c(1:95744, 95747, 95745, 95746, 95748:nrow(sorted_scouting_dataset)), ]
 row.names(sorted_scouting_dataset) <- c(1:114820)
+#This part isn't necessarily generalizable--you'd probably need to check your own
+#data to find these edge cases. I couldn't find a pattern as to why they appeared.
+#Or, for that matter, why there were as many in the first 30K as there were in the
+#next 90K events. But whatever, that just proves our point more.
 
 
 
 #FUNCTIONS TO FIND POSSESSION VALUE
 
 find_possession_value <- function(possession, players_xTT_chain) {
-  #Arguments: a possession and the players' xTT df.
+  #Arguments: a multi-event possession and the players' xTT chain df.
   #This function takes in a possession and from that possession does two things:
   #one, calculates personal xTT, the team xTT contribution, and the xTT Chain from it.
   #second, adds that possession into the players_xTT_chain dataframe.
@@ -771,7 +779,8 @@ find_possession_value <- function(possession, players_xTT_chain) {
                          (which({players_xTT_chain$Player == player_name & players_xTT_chain$Team == player_team})), 
                          (which(players_xTT_chain$Player == player_name)))
     #There are a few players who appear twice in the dataset. Shane Bulitka, to name one.
-    #This conditional is necessary because otherwise it extracts a vector of length 2.
+    #They got traded during the middle of the season or something. Anyways:
+    #This conditional is necessary because otherwise player_row extracts a vector of length 2.
     #If the player appears twice, then it checks the team as well, 
     #and assigns the xTT to the correct combination of player and team.
     players_xTT_chain[[player_row, "Personal.xTT"]] = (
@@ -943,6 +952,8 @@ names(team_xTT_data) <- col_names
 mycolumns = c('Personal.xTT','Team.xTT.Chain','xTT.Chain')
 team_xTT_data[, mycolumns] <- apply(team_xTT_data[, mycolumns], 2, function(x) as.numeric(as.character(x)))
 
+
+
 #Normalizing player data by games played.
 players_xTT_chain <- players_xTT_chain %>%
   mutate(GP = 0) %>%
@@ -971,10 +982,15 @@ write.csv(top_10, file = "top_10_players.csv")
 
 #larger_sampled_chain restricts to players who played more than 1 game
 #with the idea that it's a small enough sample size and we can't
-#draw enough conclusions from any 1 game. 40 is hard enough, but 2 is the
-#best we can do.
+#draw enough conclusions from any 1 game. 40 is hard enough, but min of 2 is the
+#best we can do while still getting a thorough data analysis done.
 
-  
+#PLAYER AND TEAM PLOTTING
+#We didn't use these in the final paper, but there's a TON that can be done by
+#exploring how xTT Chain breaks down both at a team level
+#and exploring how players generate xTT Chain: whether by their own doing
+#(i.e. primarily carries and driving play themselves, having a higher normalized personal xTT Chain)
+#or by working in a team-oriented context, and having a higher normalized team xTT Chain.
 mycolumns = c('Personal.xTT','Team.xTT.Chain','xTT.Chain','Normalized.Personal','Normalized.Team','Normalized.xTT.Chain')
 players_xTT_chain[, mycolumns] <- apply(players_xTT_chain[, mycolumns], 2, function(x) as.numeric(as.character(x)))
 
@@ -994,7 +1010,6 @@ player_scatter_plot <- ggplot(players_xTT_chain, aes(Normalized.Personal, Normal
   coord_cartesian(xlim = c(-0.4, 1.3), ylim = c(-0.35, 0.6))
 player_scatter_plot
 ggsave("BigDataCup/player_scatter_plot1.png")
-#colour = factor(Team) (if you want teams as different colors, but looks messy)
 
 player_scatter_plot2 <- ggplot(players_xTT_chain, aes(Normalized.Personal, Normalized.xTT.Chain)) +
   geom_point(shape=21, alpha=0.6, color='white', fill='red', size=1) +
@@ -1007,10 +1022,10 @@ player_scatter_plot2
 ggsave("BigDataCup/player_scatter_plot2.png")
 
 #Quick checks:
-sprintf("Half the total sum of personal and team: %f", 0.5*(sum(players_xTT_chain$Personal.xTT)+sum(players_xTT_chain$Team.xTT.Chain)))
-sprintf("Sum of xTT Chain: %f", sum(players_xTT_chain$xTT.Chain))
-sprintf("Half of the total sum of normalized personal and team: %f", 0.5*(sum(players_xTT_chain$Normalized.Personal)+sum(players_xTT_chain$Normalized.Team)))
-sprintf("Normalized sum of xTT Chain: %f", sum(players_xTT_chain$Normalized.xTT.Chain))
+#sprintf("Half the total sum of personal and team: %f", 0.5*(sum(players_xTT_chain$Personal.xTT)+sum(players_xTT_chain$Team.xTT.Chain)))
+#sprintf("Sum of xTT Chain: %f", sum(players_xTT_chain$xTT.Chain))
+#sprintf("Half of the total sum of normalized personal and team: %f", 0.5*(sum(players_xTT_chain$Normalized.Personal)+sum(players_xTT_chain$Normalized.Team)))
+#sprintf("Normalized sum of xTT Chain: %f", sum(players_xTT_chain$Normalized.xTT.Chain))
 
 
 
