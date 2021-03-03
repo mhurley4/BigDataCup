@@ -18,7 +18,7 @@ Twitter: @mhurley1200
 
 Model code is contained in Big_Data_Cup_xTT_Model.R
 
-Code to plot NHl rink is in nhl_rink_plot.R, via @mrbilltran on Twitter.
+Code to plot the rink is in nhl_rink_plot.R, via @mrbilltran on Twitter.
 
 Paper is Using_Threat_To_Value_And_Contextualize_On-Puck_Actions.pdf
 
