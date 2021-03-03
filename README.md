@@ -16,7 +16,7 @@ Email: matthurley1200@gmail.com
 Twitter: @mhurley1200
 
 
-Model code is contained Big_Data_Cup_xTT_Model.R
+Model code is contained in Big_Data_Cup_xTT_Model.R
 
 Code to plot NHl rink is in nhl_rink_plot.R, via @mrbilltran on Twitter.
 
