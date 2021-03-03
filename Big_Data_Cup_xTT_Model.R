@@ -17,6 +17,8 @@ full_scouting_dataset$X.Coordinate <- as.character(full_scouting_dataset$X.Coord
 full_scouting_dataset$Y.Coordinate <- as.character(full_scouting_dataset$Y.Coordinate)
 
 #Creating "Carries" --i.e. moving with the puck, based on the event data given
+#Uses difference in location data between consecutive events (by same player)
+#to infer carry start and end points
 for (row in 1:nrow(full_scouting_dataset)) {
   if ({full_scouting_dataset[row, ]$Event %in% c("Puck Recovery", "Takeaway")} & 
       {full_scouting_dataset[(row + 1), ]$Event %in% c("Play", "Incomplete Play", "Dump In/Out", "Shot", "Goal")} &
@@ -33,10 +35,10 @@ for (row in 1:nrow(full_scouting_dataset)) {
   }
 }
 
-#these loops do the same thing--checking to see where consecutive events happen and then creating a "carry" event
-#based on the location difference
+#these loops do the same thing--checking to see where consecutive events happen 
+#and then creating a "carry" event based on the location difference
 #NOTE: this is pretty naive and assumes moving in a straight line
-#with tracking data, could evaluate carries that aren't straight (which is almost all of them)
+#with tracking data, one could capture carries that aren't straight (which is almost all of them)
 for (row in (1:nrow(full_scouting_dataset))) {
   if ({full_scouting_dataset[row, ]$Event == "Play"} &
       {full_scouting_dataset[(row + 1), ]$Event %in% c("Play", "Incomplete Play", "Takeaway", "Puck Recovery", "Dump In/Out", "Shot", "Goal")} &
@@ -53,7 +55,8 @@ for (row in (1:nrow(full_scouting_dataset))) {
   }
 }
 
-#One more thing we gotta make based on data inferences: failed passes.
+#Creation of another event: failed passes, defined as when a player makes an
+#attempted pass that is recovered by the opposing team
 #Makes calculating the negative Markov transition matrix a lot easier.
 
 for (row in (1:nrow(full_scouting_dataset))) {
@@ -73,15 +76,8 @@ for (row in (1:nrow(full_scouting_dataset))) {
       )
   }
 }
-scouting_dataset <- full_scouting_dataset %>%
-  subset({{Home.Team.Skaters == 5} & {Away.Team.Skaters == 5}})
 
-
-#this pulls all the data from the scouting dataset and then subsets it to all our events we use for the xT model
-
-
-
-#convert the coordinate data to numeric type
+#convert the coordinate position data to numeric type
 coordcolumns = c('X.Coordinate','X.Coordinate.2','Y.Coordinate','Y.Coordinate.2')
 full_scouting_dataset[, coordcolumns] <- apply(full_scouting_dataset[, coordcolumns], 2, function(x) as.numeric(as.character(x)))
 
@@ -97,7 +93,7 @@ full_scouting_dataset <- full_scouting_dataset %>% mutate(
     Rounded.Y.Location.2 = (Y.Coordinate.2 %/% 5)
   )
 #divides the rink into 697 5x5 squares to condense data since we don't have enough data to get more granular
-#Future Consideration w' more data: divide smaller (3x3?)
+#Future consideration with more data: divide smaller (3x3?)
 
 full_scouting_dataset <- full_scouting_dataset %>% mutate(
   Bin = ifelse(
@@ -154,7 +150,8 @@ bins_df <- bins_df %>%
   mutate(Approx.X.Location = (Rounded.X.Location * 5),
     Approx.Y.Location = (Rounded.Y.Location * 5)
   )
-#Adding in new columns with the locations of the bins; in effect working backwards to get what we had before in a new df
+#Adding in new columns with the locations of the bins; 
+#in effect working backwards to get what we had before in a new df
 
 
 
@@ -173,7 +170,6 @@ iter_1_bins <- iter_1_bins %>% rename(
   `Total Shots` = Freq
   )
 names(iter_1_bins)[names(iter_1_bins) == "."] <- "Bin"
-#it won't mutate for some reason
 iter_1_bins$Bin <- as.numeric(as.character(iter_1_bins$Bin))
 #this is pulling all shots into a new dataframe
 
@@ -192,7 +188,7 @@ iter_1_goals_bins$Bin <- as.numeric(as.character(iter_1_goals_bins$Bin))
 
 iter_1_bins <- left_join(iter_1_bins, iter_1_goals_bins)
 iter_1_bins[is.na(iter_1_bins)] = 0
-#joins into 1 df and replaces all the NA with 0
+#joins into a single df and replaces all the NA with 0
 iter_1_bins <- iter_1_bins %>%
   mutate(xTT1 = (Goals / `Total Shots`))
 #our initial xTT column, appended with 1 to indicate first iteration
@@ -356,7 +352,7 @@ for (bin in 1:nrow(xTT)) {
                      Approx.Flipped.X == 0 & Approx.Flipped.Y > 0, 
                      Approx.Flipped.Y, 0
                    ))))
-    #The code for this is basically the same way the zones were
+    #The code for this is essentially the same way the zones were
     #originally generated. Just small changes.
     takeaways_xTT <- (xTT[[neg_df_takeaways$Flipped.Bin[1], "xTT1"]] /
                         nrow(neg_df_takeaways))
@@ -378,7 +374,7 @@ for (bin in 1:nrow(xTT)) {
 #PART 6: MORE ITERATIONS
 #Singh & Forstner both used 5 iterations.
 #We found that our results had converged sufficiently.
-#But there is definitely value in looking at more or less iterations
+#But there is definitely value in looking at more or fewer iterations
 #to explore the contextual value of zones in shorter sequences.
 
 xTT <- xTT %>%
@@ -524,7 +520,7 @@ xtt_heatmap <-
 
 
 #QUICK NOTE--the heatmap generated is not exactly the heatmap from the paper.
-#We filled in the whitespace from geom_tile with Photoshop, in the interest
+#We filled in the whitespace (around corners) from geom_tile with Photoshop, in the interest
 #of full disclosure.
 xtt_heatmap
 ggsave("BigDataCup/xTT_heatmap.png")
@@ -619,7 +615,7 @@ puck_recoveries_xTT <- puck_recoveries %>%
   group_by(Player, Team) %>%
   summarise(xTT.From.Puck_Recoveries = sum(xTT.Change),
             Average.Puck_Recoveries.xTT = xTT.From.Puck_Recoveries / length(Event))
-
+#Above calculates players' xTT associated with various events
 
 players_xTT <- plyr::join_all(list(total_xTT, plays_xTT, carries_xTT, 
                                    takeaways_xTT, failed_plays_xTT, incomplete_plays_xTT,
