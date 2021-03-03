@@ -1,5 +1,6 @@
 Submission to Big Data Cup competition by Avery Ellis and Matt Hurley
 
+
 Contact info:
 
 Avery Ellis
@@ -13,6 +14,7 @@ Matt Hurley
 Email: matthurley1200@gmail.com
 
 Twitter: @mhurley1200
+
 
 Model code is contained Big_Data_Cup_xTT_Model.R
 
