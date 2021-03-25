@@ -10,6 +10,7 @@
 library(lubridate)
 library(tidyverse)
 library(ggforce)
+library(ggrepel)
 '%nin%' <- Negate('%in%')
 
 full_scouting_dataset <- read.csv("https://raw.githubusercontent.com/bigdatacup/Big-Data-Cup-2021/main/hackathon_scouting.csv")
@@ -661,13 +662,6 @@ sorted_scouting_dataset <- sorted_scouting_dataset %>%
   arrange(game_date, desc(Period), desc(minutes_period), desc(seconds_period))
 #Arranging by when the event occurs. Now we've got it all in order!
 
-sorted_scouting_dataset <- sorted_scouting_dataset %>%
-  select(Home.Team, Away.Team, Period, Home.Team.Skaters, Away.Team.Skaters,
-         Team, Player, Event, Player.2, xTT, xTT.2, xTT.Change)
-#only select things we'll need when subsetting into possessions.
-
-
-
 #Determine the events we're going to assign value to
 xTT_events <- c("Play", "Failed Play", "Carry", "Takeaway", "Incomplete Play", "Puck Recovery")
 
@@ -1055,6 +1049,35 @@ player_scatter_plot2 <- ggplot(players_xTT_chain %>% filter(GP > 1), aes(Normali
   labs(x = "Individual xTT Generated", y = "xTT Chain Generated")
 player_scatter_plot2
 ggsave("BigDataCup/player_scatter_plot2.png")
+
+
+#Play Diagram for Presentation
+
+play_diagram_events <- sorted_scouting_dataset %>%
+  select(Home.Team, Away.Team, Team, Player, Event, X.Coordinate, Y.Coordinate,
+         Player.2, X.Coordinate.2, Y.Coordinate.2, xTT, xTT.2, xTT.Change)
+play_diagram_events <- play_diagram_events[c(362:369), ] %>%
+  mutate(X.Coordinate = (0.96* (X.Coordinate - 100)),
+         X.Coordinate.2 = (0.96* (X.Coordinate.2 - 100)),
+         Y.Coordinate = Y.Coordinate - 40,
+         Y.Coordinate.2 = Y.Coordinate.2 - 40)
+
+
+play_diagram <-
+  nhl_rink_plot()+
+  theme_void()+
+  geom_point(data = play_diagram_events,
+             aes(x = X.Coordinate, y = Y.Coordinate, 
+                 colour = as.factor(Event)))+
+  geom_text_repel(data = play_diagram_events,
+            aes(x = X.Coordinate, y = Y.Coordinate,
+                label = paste(Player, "\n", Event, "\n", "ΔxTT =", signif(xTT.Change, 3))))+
+  geom_segment(data = play_diagram_events %>% 
+                 filter(Event %in% c("Carry", "Play", "Failed Play")),
+               aes(x = X.Coordinate, y = Y.Coordinate,
+                xend = X.Coordinate.2, yend = Y.Coordinate.2,
+                colour = as.factor(Event)))
+play_diagram
 
 #Quick checks:
 #sprintf("Half the total sum of personal and team: %f", 0.5*(sum(players_xTT_chain$Personal.xTT)+sum(players_xTT_chain$Team.xTT.Chain)))
