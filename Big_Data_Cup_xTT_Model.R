@@ -998,30 +998,41 @@ team_bar_chart <- ggplot(team_xTT_data, aes(reorder(Team, -xTT.Chain), xTT.Chain
   geom_col(fill='lightblue', color='white') +
   #scale_fill_gradient(low="blue",high="lightblue") + #another means of setting color gradient
   theme_light() +
-  theme(axis.text.x = element_text(angle = 50, vjust = 1, hjust=1)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
+        plot.caption = element_text(hjust = 0.5, face = "italic")) +
   scale_y_continuous(expand = c(0,0),
-                     limits = c(0, 5.5)) +
-  xlab('Team') +
-  ylab('xTT Chain')
+                     limits = c(0, 5.5))+
+  labs(x = "Team", y = "xTT Chain",
+       caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
 team_bar_chart
 ggsave('BigDataCup/Team_bar_chart.png')
 
-player_scatter_plot <- ggplot(players_xTT_chain %>% filter(GP > 1), aes(Normalized.Personal, Normalized.Team)) +
+player_scatter_plot <- ggplot(players_xTT_chain %>% filter(GP > 1), 
+                              aes(Normalized.Personal, Normalized.Team)) +
   geom_point(shape=21, alpha=0.6, color='white', fill='red', size=1.5) +
-  geom_text(aes(label=ifelse({Normalized.Personal > 0.60 | Normalized.xTT.Chain > 0.35} & {Player %nin% c('Deni Goure', 'Ethan Cardwell', 'Donovan Sebrango', 'Nathan Dunkley', 'Keean Washkurak', 'Tyler Tucker', 'Liam Foudy', 'Yevgeni Oksentyuk', 'Egor Afanasyev')}, Player, '')), hjust=-0.1, vjust=-0.1) +
-  geom_text(aes(label=ifelse(Player == 'Donovan Sebrango', Player, ''), hjust=-0.1, vjust=1.0)) +
-  geom_text(aes(label=ifelse(Player == 'Nathan Dunkley', Player, ''), hjust=-0.0, vjust=-1.0)) +
-  geom_text(aes(label=ifelse(Player == 'Keean Washkurak', Player, ''), hjust=0.2, vjust=1.5)) +
-  geom_text(aes(label=ifelse(Player == 'Liam Foudy', Player, ''), hjust=0.2, vjust=-1.0)) +
-  geom_text(aes(label=ifelse(Player == 'Liam Foudy', Player, ''), hjust=0.2, vjust=-1.0)) +
-  geom_text(aes(label=ifelse(Player == 'Yevgeni Oksentyuk', Player, ''), hjust=0, vjust=-0.4)) +
-  geom_text(aes(label=ifelse(Player == 'Egor Afanasyev', Player, ''), hjust=0.6, vjust=1.3)) +
-  xlab('Individual xTT') +
-  ylab('Team xTT') +
-  stat_smooth(method = lm, se=FALSE, size=0.4) +
+  geom_text(aes(label= ifelse(
+    {Normalized.Personal > 0.60 | Normalized.xTT.Chain > 0.35} & 
+      {Player %nin% c('Deni Goure', 'Ethan Cardwell', 'Donovan Sebrango', 
+                      'Nathan Dunkley', 'Keean Washkurak', 'Tyler Tucker', 
+                      'Liam Foudy', 'Yevgeni Oksentyuk', 'Egor Afanasyev')}, 
+    Player, '')), hjust=-0.1, vjust=-0.1, size = 2.2) +
+  geom_text(aes(label=ifelse(Player == 'Donovan Sebrango', Player, ''), hjust=-0, vjust=0), size = 2.2) +
+  geom_text(aes(label=ifelse(Player == 'Nathan Dunkley', Player, ''), hjust=-0.1, vjust=0), size = 2.2) +
+  geom_text(aes(label=ifelse(Player == 'Keean Washkurak', Player, ''), hjust=0, vjust=0.95), size = 2.2) +
+  geom_text(aes(label=ifelse(Player == 'Liam Foudy', Player, ''), hjust=1, vjust=0.65), size = 2.2) +
+  geom_text(aes(label=ifelse(Player == 'Yevgeni Oksentyuk', Player, ''), hjust=0.3, vjust=-0.4), size = 2.2) +
+  geom_text(aes(label=ifelse(Player == 'Egor Afanasyev', Player, ''), hjust=0.65, vjust=1.3), size = 2.2) +
+  #stat_smooth(method = lm, se=FALSE, size=0.4) + (we can put it back in)
   geom_abline(slope=1, intercept=0, alpha=0.5) +
-  theme(aspect.ratio=0.75/1.05) +
-  coord_cartesian(xlim = c(-0.2, 0.85), ylim = c(-0.15, 0.6))
+  geom_hline(yintercept = 0, alpha=0.5)+
+  geom_vline(xintercept = 0, alpha=0.5)+
+  coord_cartesian(xlim = c(-0.2, 0.85), ylim = c(-0.15, 0.6))+
+  geom_text(x=0.15, y=0.6, label="High-Quality Teamwork", size = 3)+
+  geom_text(x = 0.75, y = 0.2, label = "High-Quality Individual Play", size = 3)+
+  theme(aspect.ratio=0.75/1.05,
+        plot.caption = element_text(hjust = 0.5, face = "italic"),
+        plot.title = element_text(hjust = 0.5, face = "bold"))+
+  labs(x = "Individual xTT Generated", y = "Team xTT Generated")
 player_scatter_plot
 ggsave("BigDataCup/player_scatter_plot1.png")
 
