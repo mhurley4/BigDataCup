@@ -988,8 +988,8 @@ pal = colorRampPalette(colors = c("lightblue", "blue"))(19)
 reorder(pal, -team_xTT_data$xTT.Chain)
 
 team_bar_chart <- ggplot(team_xTT_data, aes(reorder(Team, -xTT.Chain), xTT.Chain)) +
-  #geom_col(aes(fill=xTT.Chain)) + #(if color gradient is desired)
-  geom_col(fill='lightblue', color='white') +
+  geom_col(aes(fill=xTT.Chain)) + #(if color gradient is desired)
+  #geom_col(fill='lightblue', color='white') +
   #scale_fill_gradient(low="blue",high="lightblue") + #another means of setting color gradient
   theme_light() +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
