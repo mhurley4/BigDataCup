@@ -1038,9 +1038,17 @@ ggsave("BigDataCup/player_scatter_plot1.png")
 
 player_scatter_plot2 <- ggplot(players_xTT_chain %>% filter(GP > 1), aes(Normalized.Personal, Normalized.xTT.Chain)) +
   geom_point(shape=21, alpha=0.6, color='white', fill='red', size=1.5) +
+  geom_text(aes(label= ifelse(
+    {Normalized.Personal > 0.56 | Normalized.xTT.Chain > 0.396} & 
+      {Player %nin% c('Kirill Steklov', 'Arthur Kaliyev', 'Egor Afanasyev', 'Yevgeni Oksentyuk')}, 
+    Player, '')), hjust=-0.1, vjust=-0.1, size = 2.5) +
+  geom_text(aes(label=ifelse(Player == 'Kirill Steklov', Player, ''), hjust=0.5, vjust=-0.7), size = 2.5) +
+  geom_text(aes(label=ifelse(Player == 'Arthur Kaliyev', Player, ''), hjust=0., vjust=-0.5), size = 2.5) +
+  geom_text(aes(label=ifelse(Player == 'Egor Afanasyev', Player, ''), hjust=0.3, vjust=-0.7), size = 2.5) +
+  geom_text(aes(label=ifelse(Player == 'Yevgeni Oksentyuk', Player, ''), hjust=0.3, vjust=-0.5), size = 2.5) +
   xlab('Individual xTT') +
   ylab('xTT Chain') +
-  stat_smooth(method = lm, se=TRUE, size=0.4) +
+  stat_smooth(method = lm, se=FALSE, size=0.4) +
   geom_abline(slope=1, intercept=0, alpha=0.5) +
   theme(aspect.ratio=0.7/1.05) +
   coord_cartesian(xlim = c(-0.2, 0.85), ylim = c(-0.1, 0.6))
