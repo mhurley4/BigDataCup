@@ -1024,11 +1024,11 @@ player_scatter_plot <- ggplot(players_xTT_chain %>% filter(GP > 1),
   geom_text(aes(label=ifelse(Player == 'Egor Afanasyev', Player, ''), hjust=0.65, vjust=1.3), size = 2.2) +
   #stat_smooth(method = lm, se=FALSE, size=0.4) + #(we can put it back in)
   geom_abline(slope=1, intercept=0, alpha=0.5) +
-  geom_hline(yintercept = 0, alpha=0.5)+
-  geom_vline(xintercept = 0, alpha=0.5)+
+  geom_hline(yintercept = 0, alpha=0.5) +
+  geom_vline(xintercept = 0, alpha=0.5) +
   coord_cartesian(xlim = c(-0.2, 0.85), ylim = c(-0.15, 0.6))+
-  geom_text(x=0.15, y=0.6, label="High-Quality Teamwork", size = 3)+
-  geom_text(x = 0.75, y = 0.2, label = "High-Quality Individual Play", size = 3)+
+  geom_text(x=0.15, y=0.6, label="Higher-Quality Teamwork", size = 3)+
+  geom_text(x = 0.72, y = 0.2, label = "Higher-Quality Individual Play", size = 3)+
   theme(aspect.ratio=0.75/1.05,
         plot.caption = element_text(hjust = 0.5, face = "italic"),
         plot.title = element_text(hjust = 0.5, face = "bold"))+
@@ -1043,15 +1043,16 @@ player_scatter_plot2 <- ggplot(players_xTT_chain %>% filter(GP > 1), aes(Normali
       {Player %nin% c('Kirill Steklov', 'Arthur Kaliyev', 'Egor Afanasyev', 'Yevgeni Oksentyuk')}, 
     Player, '')), hjust=-0.1, vjust=-0.1, size = 2.5) +
   geom_text(aes(label=ifelse(Player == 'Kirill Steklov', Player, ''), hjust=0.5, vjust=-0.7), size = 2.5) +
-  geom_text(aes(label=ifelse(Player == 'Arthur Kaliyev', Player, ''), hjust=0., vjust=-0.5), size = 2.5) +
-  geom_text(aes(label=ifelse(Player == 'Egor Afanasyev', Player, ''), hjust=0.3, vjust=-0.7), size = 2.5) +
+  geom_text(aes(label=ifelse(Player == 'Arthur Kaliyev', Player, ''), hjust=0, vjust=-0.5), size = 2.5) +
+  geom_text(aes(label=ifelse(Player == 'Egor Afanasyev', Player, ''), hjust=0.5, vjust=-0.7), size = 2.5) +
   geom_text(aes(label=ifelse(Player == 'Yevgeni Oksentyuk', Player, ''), hjust=0.3, vjust=-0.5), size = 2.5) +
-  xlab('Individual xTT') +
-  ylab('xTT Chain') +
-  stat_smooth(method = lm, se=FALSE, size=0.4) +
+  #stat_smooth(method = lm, se=FALSE, size=0.4) +
   geom_abline(slope=1, intercept=0, alpha=0.5) +
+  geom_hline(yintercept = 0, alpha=0.5) +
+  geom_vline(xintercept = 0, alpha=0.5) +
   theme(aspect.ratio=0.7/1.05) +
-  coord_cartesian(xlim = c(-0.2, 0.85), ylim = c(-0.1, 0.6))
+  coord_cartesian(xlim = c(-0.2, 0.85), ylim = c(-0.1, 0.6))+
+  labs(x = "Individual xTT Generated", y = "xTT Chain Generated")
 player_scatter_plot2
 ggsave("BigDataCup/player_scatter_plot2.png")
 
