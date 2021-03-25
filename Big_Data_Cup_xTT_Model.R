@@ -997,23 +997,33 @@ team_bar_chart <- ggplot(team_xTT_data, aes(reorder(Team, -xTT.Chain), xTT.Chain
   ylab('xTT Chain')
 team_bar_chart
 
-player_scatter_plot <- ggplot(players_xTT_chain, aes(Normalized.Personal, Normalized.Team)) +
-  geom_point(shape=21, alpha=0.6, color='white', fill='red', size=1.25) +
+player_scatter_plot <- ggplot(players_xTT_chain %>% filter(GP > 1), aes(Normalized.Personal, Normalized.Team)) +
+  geom_point(shape=21, alpha=0.6, color='white', fill='red', size=1.5) +
+  geom_text(aes(label=ifelse({Normalized.Personal > 0.60 | Normalized.xTT.Chain > 0.35} & {Player %nin% c('Deni Goure', 'Ethan Cardwell', 'Donovan Sebrango', 'Nathan Dunkley', 'Keean Washkurak', 'Tyler Tucker', 'Liam Foudy', 'Yevgeni Oksentyuk', 'Egor Afanasyev')}, Player, '')), hjust=-0.1, vjust=-0.1) +
+  geom_text(aes(label=ifelse(Player == 'Donovan Sebrango', Player, ''), hjust=-0.1, vjust=1.0)) +
+  geom_text(aes(label=ifelse(Player == 'Nathan Dunkley', Player, ''), hjust=-0.0, vjust=-1.0)) +
+  geom_text(aes(label=ifelse(Player == 'Keean Washkurak', Player, ''), hjust=0.2, vjust=1.5)) +
+  geom_text(aes(label=ifelse(Player == 'Liam Foudy', Player, ''), hjust=0.2, vjust=-1.0)) +
+  geom_text(aes(label=ifelse(Player == 'Liam Foudy', Player, ''), hjust=0.2, vjust=-1.0)) +
+  geom_text(aes(label=ifelse(Player == 'Yevgeni Oksentyuk', Player, ''), hjust=0, vjust=-0.4)) +
+  geom_text(aes(label=ifelse(Player == 'Egor Afanasyev', Player, ''), hjust=0.6, vjust=1.3)) +
   xlab('Individual xTT') +
   ylab('Team xTT') +
-  #stat_smooth(method = lm, se=FALSE, size=0.4) +
-  theme(aspect.ratio=0.95/1.7) +
-  coord_cartesian(xlim = c(-0.4, 1.3), ylim = c(-0.35, 0.6))
+  stat_smooth(method = lm, se=FALSE, size=0.4) +
+  geom_abline(slope=1, intercept=0, alpha=0.5) +
+  theme(aspect.ratio=0.75/1.05) +
+  coord_cartesian(xlim = c(-0.2, 0.85), ylim = c(-0.15, 0.6))
 player_scatter_plot
 ggsave("BigDataCup/player_scatter_plot1.png")
 
-player_scatter_plot2 <- ggplot(players_xTT_chain, aes(Normalized.Personal, Normalized.xTT.Chain)) +
-  geom_point(shape=21, alpha=0.6, color='white', fill='red', size=1) +
+player_scatter_plot2 <- ggplot(players_xTT_chain %>% filter(GP > 1), aes(Normalized.Personal, Normalized.xTT.Chain)) +
+  geom_point(shape=21, alpha=0.6, color='white', fill='red', size=1.5) +
   xlab('Individual xTT') +
   ylab('xTT Chain') +
-  stat_smooth(method = lm, se=FALSE, size=0.4) +
-  theme(aspect.ratio=1.25/1.8) +
-  coord_cartesian(xlim = c(-0.5, 1.3), ylim = c(-0.25, 1))
+  stat_smooth(method = lm, se=TRUE, size=0.4) +
+  geom_abline(slope=1, intercept=0, alpha=0.5) +
+  theme(aspect.ratio=0.7/1.05) +
+  coord_cartesian(xlim = c(-0.2, 0.85), ylim = c(-0.1, 0.6))
 player_scatter_plot2
 ggsave("BigDataCup/player_scatter_plot2.png")
 
