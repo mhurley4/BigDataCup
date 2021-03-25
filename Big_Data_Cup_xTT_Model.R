@@ -1022,7 +1022,7 @@ player_scatter_plot <- ggplot(players_xTT_chain %>% filter(GP > 1),
   geom_text(aes(label=ifelse(Player == 'Liam Foudy', Player, ''), hjust=1, vjust=0.65), size = 2.2) +
   geom_text(aes(label=ifelse(Player == 'Yevgeni Oksentyuk', Player, ''), hjust=0.3, vjust=-0.4), size = 2.2) +
   geom_text(aes(label=ifelse(Player == 'Egor Afanasyev', Player, ''), hjust=0.65, vjust=1.3), size = 2.2) +
-  #stat_smooth(method = lm, se=FALSE, size=0.4) + (we can put it back in)
+  #stat_smooth(method = lm, se=FALSE, size=0.4) + #(we can put it back in)
   geom_abline(slope=1, intercept=0, alpha=0.5) +
   geom_hline(yintercept = 0, alpha=0.5)+
   geom_vline(xintercept = 0, alpha=0.5)+
