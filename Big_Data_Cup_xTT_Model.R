@@ -1057,10 +1057,10 @@ play_diagram_events <- sorted_scouting_dataset %>%
   select(Home.Team, Away.Team, Team, Player, Event, X.Coordinate, Y.Coordinate,
          Player.2, X.Coordinate.2, Y.Coordinate.2, xTT, xTT.2, xTT.Change)
 play_diagram_events <- play_diagram_events[c(362:369), ] %>%
-  mutate(X.Coordinate = (0.96* (X.Coordinate - 100)),
-         X.Coordinate.2 = (0.96* (X.Coordinate.2 - 100)),
-         Y.Coordinate = Y.Coordinate - 40,
-         Y.Coordinate.2 = Y.Coordinate.2 - 40)
+  mutate(X.Coordinate = X.Coordinate - 100,
+         X.Coordinate.2 = X.Coordinate.2 - 100,
+         Y.Coordinate = Y.Coordinate - 42.5,
+         Y.Coordinate.2 = Y.Coordinate.2 - 42,5)
 
 
 play_diagram <-
@@ -1069,14 +1069,28 @@ play_diagram <-
   geom_point(data = play_diagram_events,
              aes(x = X.Coordinate, y = Y.Coordinate, 
                  colour = as.factor(Event)))+
-  geom_text_repel(data = play_diagram_events,
+  geom_text_repel(data = play_diagram_events %>% 
+                    filter(),
             aes(x = X.Coordinate, y = Y.Coordinate,
-                label = paste(Player, "\n", Event, "\n", "ΔxTT =", signif(xTT.Change, 3))))+
+                label = ifelse(Event %in% xTT_events, 
+                               paste(Player, "\n", Event, "\n", "ΔxTT =", 
+                                     signif(xTT.Change, 3)),
+                               paste(Player, "\n", Event))),
+            size = 2.5)+
   geom_segment(data = play_diagram_events %>% 
                  filter(Event %in% c("Carry", "Play", "Failed Play")),
                aes(x = X.Coordinate, y = Y.Coordinate,
                 xend = X.Coordinate.2, yend = Y.Coordinate.2,
-                colour = as.factor(Event)))
+                colour = as.factor(Event)))+
+  theme(legend.position = "right",
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "italic"),
+        plot.subtitle = element_text(hjust = 0.5, face = "italic"))+
+  labs(x = "", y = "", title = "Example Play Breakdown Using xTT Chain",
+       subtitle = "< Defensive Zone \n Offensive Zone >",
+       colour = "Event Type",
+       caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
+  
 play_diagram
 
 #Quick checks:
