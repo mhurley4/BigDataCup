@@ -725,9 +725,9 @@ find_possession_value <- function(possession, players_xTT_chain) {
   #second, adds that possession into the players_xTT_chain dataframe.
   #It returns the players_xTT_chain dataframe.
   
-  
-  delt_xTT <- (possession[[nrow(possession), "xTT.2"]] - 
-                 possession[[1, "xTT"]])
+  delt_xTT <- ifelse((possession[[nrow(possession), "Event"]] %in% xTT_events),
+                     (possession[[nrow(possession), "xTT.2"]] - possession[[1, "xTT"]]),
+                     (possession[[nrow(possession), "xTT"]] - possession[[1, "xTT"]]))
   #finds the change in xTT from the previous possession's ending to the final event of the possession. 
   passing_players_df <- possession %>%
     subset(Event == "Play") %>%
@@ -748,10 +748,12 @@ find_possession_value <- function(possession, players_xTT_chain) {
     #finds the team contribution based on that
     possession_xTT <- possession %>%
       select(Team, Player, xTT.Change) %>%
-      filter(Player %in% passing_players_df$Player) %>%
+      #filter(Player %in% passing_players_df$Player) %>%
       group_by(Team, Player) %>%
       summarise(Personal.xTT = sum(xTT.Change),
-                Team.xTT.Chain = delt_xTT / passing_players) %>%
+                Team.xTT.Chain = ifelse((Player %in% passing_players_df$Player),
+                                        delt_xTT / passing_players,
+                                        0)) %>%
       mutate(xTT.Chain = ifelse((Player %in% passing_players_df$Player), 
                                 ((Personal.xTT + Team.xTT.Chain) * 0.5),
                                 Personal.xTT)
@@ -1005,13 +1007,12 @@ player_scatter_plot <- ggplot(players_xTT_chain %>% filter(GP > 1),
                               aes(Normalized.Personal, Normalized.Team)) +
   geom_point(shape=21, alpha=0.6, color='white', fill='red', size=1.5) +
   geom_text(aes(label= ifelse(
-    {Normalized.Personal > 0.60 | Normalized.xTT.Chain > 0.35} & 
+    {Normalized.Personal > 1.2 | Normalized.xTT.Chain > 0.8} & 
       {Player %nin% c('Deni Goure', 'Ethan Cardwell', 'Donovan Sebrango', 
-                      'Nathan Dunkley', 'Keean Washkurak', 'Tyler Tucker', 
+                      'Keean Washkurak', 'Tyler Tucker', 
                       'Liam Foudy', 'Yevgeni Oksentyuk', 'Egor Afanasyev')}, 
     Player, '')), hjust=-0.1, vjust=-0.1, size = 2.2) +
   geom_text(aes(label=ifelse(Player == 'Donovan Sebrango', Player, ''), hjust=-0, vjust=0), size = 2.2) +
-  geom_text(aes(label=ifelse(Player == 'Nathan Dunkley', Player, ''), hjust=-0.1, vjust=0), size = 2.2) +
   geom_text(aes(label=ifelse(Player == 'Keean Washkurak', Player, ''), hjust=0, vjust=0.95), size = 2.2) +
   geom_text(aes(label=ifelse(Player == 'Liam Foudy', Player, ''), hjust=1, vjust=0.65), size = 2.2) +
   geom_text(aes(label=ifelse(Player == 'Yevgeni Oksentyuk', Player, ''), hjust=0.3, vjust=-0.4), size = 2.2) +
@@ -1020,7 +1021,7 @@ player_scatter_plot <- ggplot(players_xTT_chain %>% filter(GP > 1),
   geom_abline(slope=1, intercept=0, alpha=0.5) +
   geom_hline(yintercept = 0, alpha=0.5) +
   geom_vline(xintercept = 0, alpha=0.5) +
-  coord_cartesian(xlim = c(-0.2, 0.85), ylim = c(-0.15, 0.6))+
+  #coord_cartesian(xlim = c(-0.2, 0.85), ylim = c(-0.15, 0.6))+
   geom_text(x=0.15, y=0.6, label="Higher-Quality Teamwork", size = 3)+
   geom_text(x = 0.72, y = 0.2, label = "Higher-Quality Individual Play", size = 3)+
   theme(aspect.ratio=0.75/1.05,
@@ -1056,11 +1057,20 @@ ggsave("BigDataCup/player_scatter_plot2.png")
 play_diagram_events <- sorted_scouting_dataset %>%
   select(Home.Team, Away.Team, Team, Player, Event, X.Coordinate, Y.Coordinate,
          Player.2, X.Coordinate.2, Y.Coordinate.2, xTT, xTT.2, xTT.Change)
-play_diagram_events <- play_diagram_events[c(362:369), ] %>%
-  mutate(X.Coordinate = X.Coordinate - 100,
-         X.Coordinate.2 = X.Coordinate.2 - 100,
-         Y.Coordinate = Y.Coordinate - 42.5,
-         Y.Coordinate.2 = Y.Coordinate.2 - 42,5)
+play_diagram_events <- play_diagram_events[c(1803:1810), ] %>%
+  rbind(c("Erie Otters", "Sudbury Wolves", "Sudbury Wolves", "Chase Stillman", 
+          "Carry", 98, 77, "", 124, 78, 0.001633138, 0.011734565, 0.01010143)) %>%
+  rbind(c("Erie Otters", "Sudbury Wolves", "Sudbury Wolves", "Chase Stillman", 
+          "Carry", 124, 78, "", 160, 67, 0.011734565, 0.135275438, 0.1235409)) %>%
+  mutate(X.Coordinate = as.numeric(X.Coordinate) - 100,
+         X.Coordinate.2 = as.numeric(X.Coordinate.2) - 100,
+         Y.Coordinate = as.numeric(Y.Coordinate) - 42.5,
+         Y.Coordinate.2 = as.numeric(Y.Coordinate.2) - 42.5,
+         xTT = as.numeric(xTT),
+         xTT.2 = as.numeric(xTT.2),
+         xTT.Change = as.numeric(xTT.Change))
+rownames(play_diagram_events) <- c(1:10)
+play_diagram_events <- play_diagram_events[c(c(1:2), 4, 9, 5, 10, c(6:8)), ]
 
 
 play_diagram <-
@@ -1069,13 +1079,14 @@ play_diagram <-
   geom_point(data = play_diagram_events,
              aes(x = X.Coordinate, y = Y.Coordinate, 
                  colour = as.factor(Event)))+
-  geom_text_repel(data = play_diagram_events %>% 
+  geom_label_repel(data = play_diagram_events %>% 
                     filter(),
             aes(x = X.Coordinate, y = Y.Coordinate,
                 label = ifelse(Event %in% xTT_events, 
-                               paste(Player, "\n", Event, "\n", "ΔxTT =", 
-                                     signif(xTT.Change, 3)),
-                               paste(Player, "\n", Event))),
+                               paste(
+                                 paste(Event, ": ", Player, sep = ""),
+                                 "\n", "ΔxTT =", signif(xTT.Change, 3)),
+                               paste(Event, ": ", Player, sep = ""))),
             size = 2.5)+
   geom_segment(data = play_diagram_events %>% 
                  filter(Event %in% c("Carry", "Play", "Failed Play")),
@@ -1092,6 +1103,15 @@ play_diagram <-
        caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
   
 play_diagram
+
+play_diagram_xTT <- players_xTT_chain %>%
+  subset(Player %in% play_diagram_xTT$Player) %>%
+  select(Team, Player, Personal.xTT, Team.xTT.Chain, xTT.Chain) %>%
+  mutate(Personal.xTT = 0,
+         Team.xTT.Chain = 0,
+         xTT.Chain = 0)
+play_diagram_xTT <- find_possession_value(play_diagram_events, play_diagram_xTT)
+
 
 #Quick checks:
 #sprintf("Half the total sum of personal and team: %f", 0.5*(sum(players_xTT_chain$Personal.xTT)+sum(players_xTT_chain$Team.xTT.Chain)))
