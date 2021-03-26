@@ -984,8 +984,8 @@ write.csv(top_10, file = "top_10_players.csv")
 mycolumns = c('Personal.xTT','Team.xTT.Chain','xTT.Chain','Normalized.Personal','Normalized.Team','Normalized.xTT.Chain')
 players_xTT_chain[, mycolumns] <- apply(players_xTT_chain[, mycolumns], 2, function(x) as.numeric(as.character(x)))
 
-pal = colorRampPalette(colors = c("lightblue", "blue"))(19)
-reorder(pal, -team_xTT_data$xTT.Chain)
+#pal = colorRampPalette(colors = c("lightblue", "blue"))(19)
+#reorder(pal, -team_xTT_data$xTT.Chain)
 
 team_bar_chart <- ggplot(team_xTT_data, aes(reorder(Team, -xTT.Chain), xTT.Chain)) +
   geom_col(aes(fill=xTT.Chain)) + #(if color gradient is desired)
