@@ -747,8 +747,8 @@ find_possession_value <- function(possession, players_xTT_chain) {
     team_contrib <- (delt_xTT / passing_players)
     #finds the team contribution based on that
     possession_xTT <- possession %>%
+      filter(Event %in% xTT_events) %>%
       select(Team, Player, xTT.Change) %>%
-      #filter(Player %in% passing_players_df$Player) %>%
       group_by(Team, Player) %>%
       summarise(Personal.xTT = sum(xTT.Change),
                 Team.xTT.Chain = ifelse((Player %in% passing_players_df$Player),
@@ -787,7 +787,6 @@ find_possession_value <- function(possession, players_xTT_chain) {
   }
   return(players_xTT_chain)
 }
-
 
 single_event_value <- function(possession, players_xTT_chain) {
   #Arguments: a possession of only one event and the players' xTT df.
@@ -1101,6 +1100,7 @@ play_diagram <-
        caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
   
 play_diagram
+ggsave("BigDataCup/play_diagram.png")
 
 play_diagram_xTT <- players_xTT_chain %>%
   subset(Player %in% play_diagram_xTT$Player) %>%
