@@ -747,8 +747,8 @@ find_possession_value <- function(possession, players_xTT_chain) {
     team_contrib <- (delt_xTT / passing_players)
     #finds the team contribution based on that
     possession_xTT <- possession %>%
+      filter(Event %in% xTT_events) %>%
       select(Team, Player, xTT.Change) %>%
-      #filter(Player %in% passing_players_df$Player) %>%
       group_by(Team, Player) %>%
       summarise(Personal.xTT = sum(xTT.Change),
                 Team.xTT.Chain = ifelse((Player %in% passing_players_df$Player),
@@ -1005,7 +1005,7 @@ player_scatter_plot <- ggplot(players_xTT_chain %>% filter(GP > 1),
                               aes(Normalized.Personal, Normalized.Team)) +
   geom_point(shape=21, alpha=0.6, color='white', fill='red', size=1.5) +
   geom_text(aes(label= ifelse(
-    {Normalized.Personal > 3.5 | Normalized.xTT.Chain > 2.5} & 
+    {Normalized.Personal > 4 | Normalized.Team > 3} & 
       {Player %nin% c('Deni Goure', 'Ethan Cardwell', 'Donovan Sebrango', 
                       'Keean Washkurak', 'Tyler Tucker', 
                       'Liam Foudy', 'Yevgeni Oksentyuk', 'Egor Afanasyev')}, 
