@@ -788,7 +788,6 @@ find_possession_value <- function(possession, players_xTT_chain) {
   return(players_xTT_chain)
 }
 
-
 single_event_value <- function(possession, players_xTT_chain) {
   #Arguments: a possession of only one event and the players' xTT df.
   #This function takes in a possession of just one event and from that possession
@@ -1101,6 +1100,7 @@ play_diagram <-
        caption = "Viz by Avery Ellis and Matt Hurley; Data via Stathletes")
   
 play_diagram
+ggsave("BigDataCup/play_diagram.png")
 
 play_diagram_xTT <- players_xTT_chain %>%
   subset(Player %in% play_diagram_xTT$Player) %>%
